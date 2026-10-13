@@ -1,6 +1,7 @@
 // FinalCheck Worker: /api/* routes, everything else is static assets.
 // The LLM parse is optional — any failure falls back to the keyword ruleset.
 import { parseIntent, validateMandate, mergeMandate, CATEGORIES } from '../public/lib/parse.js';
+import { handleConsole } from './console.js';
 
 const JSON_HEADERS = { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' };
 const json = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: JSON_HEADERS });
@@ -109,7 +110,10 @@ export default {
       if (request.method !== 'POST') return json({ error: 'POST only' }, 405);
       return handleParse(request, env);
     }
-    if (url.pathname.startsWith('/api/')) return json({ error: 'not found' }, 404);
+    if (url.pathname.startsWith('/api/')) {
+      const res = await handleConsole(request, env, url);
+      return res ?? json({ error: 'not found' }, 404);
+    }
     return env.ASSETS.fetch(request);
   },
 };

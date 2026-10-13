@@ -10,3 +10,7 @@ run_worker_first = ["/api/*"]
 
 [observability]
 enabled = true
+
+[[kv_namespaces]]
+binding = "FC_STORE"
+id = "0ab7cd20596c4b4897b99d8a354bb5c4"
