@@ -86,10 +86,10 @@ test('sign tea set → receipt + order events, verifiable demo sig', async () =>
   assert.equal(order.order_id, r.body.order_id);
 });
 
-test('hamper + Gift Club → 409 and a refusal event with codes', async () => {
+test('hamper + Gift Club → 200 {ok:false} and a refusal event with codes', async () => {
   const { call } = api();
   const r = await call('POST', '/api/sign', { mandate, cart: hamperCart });
-  assert.equal(r.status, 409);
+  assert.equal(r.status, 200); assert.equal(r.body.ok, false);
   assert.equal(r.body.ok, false);
   const [ev] = (await call('GET', '/api/events')).body.events;
   assert.equal(ev.kind, 'refusal');
@@ -107,7 +107,7 @@ test('server ignores client prices and verdicts', async () => {
     items: [{ listing_id: 'lst_hamper_pro', name: 'Cheap thing', price: 1 }],
   };
   const r = await call('POST', '/api/sign', { mandate, cart: tampered, verdict: { ok: true, violations: [] } });
-  assert.equal(r.status, 409);
+  assert.equal(r.status, 200); assert.equal(r.body.ok, false);
   assert.equal(r.body.verdict.one_off_total, 5200);
   assert.equal((await call('POST', '/api/sign', { mandate, cart: { items: [{ listing_id: 'lst_fake' }] } })).status, 400);
   assert.equal((await call('POST', '/api/sign', { mandate: { ...mandate, max_amount: -5 }, cart: teaCart })).status, 400);
@@ -123,7 +123,7 @@ test('baseline sign (mandate null): receipt records baseline mode, hamper still 
   assert.equal(sig.value, await sha256Hex(canonicalize(body)));
 
   const bad = await call('POST', '/api/sign', { mandate: null, cart: hamperCart });
-  assert.equal(bad.status, 409);
+  assert.equal(bad.status, 200); assert.equal(bad.body.ok, false);
   assert.ok(!bad.body.verdict.violations.some((v) => v.code === 'OVER_BUDGET'));
   const [ev] = (await call('GET', '/api/events')).body.events;
   assert.equal(ev.cap, undefined);

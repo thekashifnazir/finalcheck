@@ -38,7 +38,24 @@ export function validatePrefsPatch(patch) {
 export function makeStore(kv, user = 'demo') {
   const PREFS = `prefs:${user}`;
   const EVENTS = `events:${user}`;
+  const MANDATE = `mandate:${user}`;
   return {
+    // The standing mandate an agent spends against: {id, mandate, status, created_at, agent}.
+    // One per user; status is "active" until revoked or used up (one-off).
+    async getStandingMandate() {
+      return kv.get(MANDATE, 'json');
+    },
+    async setStandingMandate(record) {
+      await kv.put(MANDATE, JSON.stringify(record));
+      return record;
+    },
+    async setMandateStatus(status) {
+      const rec = await kv.get(MANDATE, 'json');
+      if (!rec) return null;
+      const next = { ...rec, status, [`${status}_at`]: new Date().toISOString() };
+      await kv.put(MANDATE, JSON.stringify(next));
+      return next;
+    },
     async getPrefs() {
       return { ...DEFAULT_PREFS, ...((await kv.get(PREFS, 'json')) ?? {}) };
     },
