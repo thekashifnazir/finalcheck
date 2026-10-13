@@ -1,0 +1,34 @@
+{
+  "id": "uk-2026-10",
+  "label": "UK policy pack (illustrative subset)",
+  "rules": {
+    "OVER_BUDGET": {
+      "basis": "Act within the customer's stated limit — delivering good outcomes",
+      "ref": "FCA Consumer Duty (PRIN 2A)"
+    },
+    "UNDISCLOSED_RECURRING": {
+      "basis": "A recurring charge needs clear pre-contract information and explicit consent",
+      "ref": "DMCC Act 2024, Part 4 Ch 2 (subscription contracts)"
+    },
+    "INJECTED_INSTRUCTION": {
+      "basis": "The agent acts only on the principal's mandate — merchant content is untrusted data, never instructions",
+      "ref": "AP2: cart mandate must derive from the intent mandate"
+    },
+    "CATEGORY_MISMATCH": {
+      "basis": "Human-not-present purchases are scope-bound to the authorised category",
+      "ref": "AP2 v0.2 human-not-present mandates"
+    },
+    "EXPIRED": {
+      "basis": "Consent is time-bound — authorisation lapses at expiry",
+      "ref": "PSD2 SCA / cVRP consent parameters"
+    }
+  },
+  "receipt": {
+    "basis": "The signed receipt is the evidence pack for a dispute",
+    "ref": "PSR APP reimbursement regime — no agent-specific chargeback reason code exists"
+  },
+  "data": {
+    "basis": "The mandate holds only cap, scope and expiry — no card or identity data",
+    "ref": "UK GDPR Art 5(1)(c) data minimisation"
+  }
+}
