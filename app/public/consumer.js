@@ -352,7 +352,7 @@ function startChat(prefill = '') {
   $('c-chat-actions').hidden = true;
   $('c-chat-input').value = prefill;
   $('c-chat-input').placeholder = 'e.g. buy mum a birthday present';
-  say('finalcheck', 'What should your agent buy? Say it in your own words.');
+  say('finalcheck', 'What should your agent buy?');
 }
 
 function onIntent(text) {

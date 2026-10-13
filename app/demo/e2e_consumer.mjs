@@ -183,7 +183,7 @@ try {
 
   await page.click('#c-skip');
   await page.waitForSelector('#c-skip-confirm:not([hidden])');
-  check('Skip shows confirmation', (await page.textContent('#c-skip-confirm')).includes("won't be asked again"));
+  check('Skip shows confirmation', (await page.textContent('#c-skip-confirm')).includes("won't ask again"));
   check('Skip turns off ask toggle', !(await page.isChecked('#c-ask-toggle')));
 
   const feed = await page.textContent('#c-activity-status');
