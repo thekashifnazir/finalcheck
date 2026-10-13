@@ -142,10 +142,16 @@ const protection = (policy) => `${policy.region} baseline`;
 
 // Kill switch: while the person has paused their agent, every purchase attempt is refused
 // and logged, whatever the cart or mandate.
-async function pausedRefusal(store) {
+async function pausedRefusal(store, items) {
   const prefs = await store.getPrefs();
   if (!prefs.agents_paused) return null;
-  await store.addEvents({ kind: 'refusal', agent: AGENT, at: new Date().toISOString(), items: [], violations: ['AGENTS_PAUSED'] });
+  let detail = { items: [] };
+  try {
+    const cart = rebuildCart(toCart(items));
+    const { pending_total } = check(null, cart, listings, new Date(), policyFor(prefs.region), trust);
+    detail = { merchant: cart.merchant, total: formatPence(pending_total), items: cart.items.map((i) => ({ name: i.name })) };
+  } catch { /* unreadable cart: still refuse, just with less detail */ }
+  await store.addEvents({ kind: 'refusal', agent: AGENT, at: new Date().toISOString(), ...detail, violations: ['AGENTS_PAUSED'] });
   return {
     isError: true,
     result: { refused: true, paused: true, reason: 'The user has paused all agent purchases in FinalCheck. Do not retry or look for another way to pay; tell the user and stop.' },
@@ -154,7 +160,7 @@ async function pausedRefusal(store) {
 
 async function callTool(name, args, env, store) {
   if (name === 'check_cart' || name === 'sign_receipt') {
-    const paused = await pausedRefusal(store);
+    const paused = await pausedRefusal(store, args.items);
     if (paused) return paused;
   }
   switch (name) {

@@ -148,6 +148,8 @@ test('paused agent: check_cart and sign_receipt refused and logged, resume resto
   assert.equal(sig.isError, true);
   const ev = await c.store.listEvents();
   assert.deepEqual(ev.slice(0, 2).map((e) => e.violations[0]), ['AGENTS_PAUSED', 'AGENTS_PAUSED']);
+  assert.equal(ev[0].total, '£34.99');
+  assert.equal(ev[0].merchant, 'Kettle Lane Tea Co.');
   assert.equal((await c.tool('get_mandate')).data.agents_paused, true);
   await c.store.setPrefs({ agents_paused: false });
   assert.equal((await c.tool('sign_receipt', { items: TEA })).data.ok, true);
