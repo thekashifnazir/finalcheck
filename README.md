@@ -21,13 +21,16 @@ Console for humans, tools for agents, one engine:
 - **Consumer view** (`/`): plain-English protection status (UK or Singapore pack). A short
   conversation builds the mandate: you say what you want, and it asks only for what you left out
   (price, renewals, purpose, end date). You can revoke the mandate, or skip it and keep baseline
-  protection. A feed shows what your agent did, in sentences.
+  protection. **Pause my agent** is a kill switch: every purchase the agent tries is refused and
+  logged until you resume. A feed shows what your agent did, in sentences.
 - **Ops console** (`/ops/`): three scenarios, walked through stage by stage.
   **A** hidden instruction + upsell: prompt-injected listing, £4.99/mo add-on, over budget.
   **B** lookalike merchant + drip fee: a shop 2 characters off the real domain, a fee that appears
   only at checkout, card details pasted into a gift message.
   **C** coerced gift-card purchase: "Mum texted from a new number". FinalCheck halts, nothing is
   paid, and a refusal record is kept.
+  Signed receipts can be verified against the published key, and a **tamper** button edits the total
+  to show the signature check failing.
 - **Agent tools** (`/mcp`): a remote MCP server. An agent like Claude lists products, sets or asks
   for a mandate, checks a cart, and pays only through `sign_receipt`. If there's no mandate, the agent
   is told to ask the person once: set one, or continue with baseline protection.
