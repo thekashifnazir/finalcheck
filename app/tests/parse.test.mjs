@@ -56,3 +56,12 @@ test('merge: LLM fills a missing cap', () => {
   assert.equal(m.max_amount, 60);
   assert.equal(validateMandate(m), m);
 });
+
+test('S$ amounts → SGD mandate', () => {
+  const m = parseIntent('under S$60 for a present', NOW);
+  assert.equal(m.max_amount, 60);
+  assert.equal(m.currency, 'SGD');
+  assert.equal(toChips(m)[0], 'MAX S$60');
+  assert.equal(parseIntent('a gift up to $25', NOW, { currency: 'SGD' }).currency, 'SGD');
+  assert.equal(parseIntent('a gift up to $25', NOW).max_amount, 25);
+});

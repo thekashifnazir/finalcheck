@@ -34,21 +34,24 @@ export function nextWeekdayEnd(now, dow = 5) {
   return londonToISO(base.getUTCFullYear(), base.getUTCMonth() + 1, base.getUTCDate(), 23, 59);
 }
 
-const AMOUNT_RE = /(?:under|below|max(?:imum)?|less than|up to|no more than|≤|<)\s*£?\s*(\d+(?:\.\d{1,2})?)/i;
-const BARE_AMOUNT_RE = /£\s*(\d+(?:\.\d{1,2})?)/;
+const CUR = '(?:£|S\\$|SGD\\s*|\\$)';
+const AMOUNT_RE = new RegExp(`(?:under|below|max(?:imum)?|less than|up to|no more than|≤|<)\\s*${CUR}?\\s*(\\d+(?:\\.\\d{1,2})?)`, 'i');
+const BARE_AMOUNT_RE = new RegExp(`${CUR}\\s*(\\d+(?:\\.\\d{1,2})?)`, 'i');
+const SGD_RE = /S\$|\bSGD\b/i;
+export const CURRENCY_SYMBOL = { GBP: '£', SGD: 'S$' };
 const ONE_OFF_RE = /no subscriptions?|one[- ]off|no recurring|single payment/i;
 const RECURRING_OK_RE = /subscriptions?\s+(?:are\s+)?(?:ok|fine|allowed)/i;
 const GIFT_RE = /gift|present|birthday/i;
 const BY_DAY_RE = /\bby\s+(sunday|monday|tuesday|wednesday|thursday|friday|saturday)\b/i;
 
-export function parseIntent(text, now = new Date()) {
+export function parseIntent(text, now = new Date(), opts = {}) {
   const raw = String(text ?? '').trim();
   const amt = raw.match(AMOUNT_RE) || raw.match(BARE_AMOUNT_RE);
   const allow_recurring = RECURRING_OK_RE.test(raw) && !ONE_OFF_RE.test(raw);
   const by = raw.match(BY_DAY_RE);
   return {
     raw,
-    currency: 'GBP',
+    currency: SGD_RE.test(raw) ? 'SGD' : (opts.currency ?? 'GBP'),
     max_amount: amt ? Number(amt[1]) : null,
     one_off: !allow_recurring,
     allow_recurring,
@@ -91,7 +94,8 @@ export function expiryLabel(iso) {
 
 export function toChips(m) {
   const amt = Number(m.max_amount);
-  const chips = [`MAX £${Number.isInteger(amt) ? amt : amt.toFixed(2)}`];
+  const sym = CURRENCY_SYMBOL[m.currency] ?? '£';
+  const chips = [`MAX ${sym}${Number.isInteger(amt) ? amt : amt.toFixed(2)}`];
   if (m.one_off) chips.push('ONE-OFF');
   chips.push(`CATEGORY: ${String(m.category).toUpperCase()}`);
   chips.push(`EXPIRES ${expiryLabel(m.expires)}`);

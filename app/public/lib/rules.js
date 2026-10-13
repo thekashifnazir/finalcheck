@@ -1,9 +1,11 @@
 // FinalCheck diff engine: mandate vs cart. Pure — no DOM, no fetch.
 // Money is integer pence throughout; mandate.max_amount is pounds and is converted once.
 
+const SYM = { GBP: '£', SGD: 'S$' };
+let sym = '£'; // set per check() call from the mandate/policy currency
 const MONEY = (p) => {
   const s = (Math.abs(p) / 100).toFixed(2);
-  return '£' + (s.endsWith('.00') ? s.slice(0, -3) : s);
+  return sym + (s.endsWith('.00') ? s.slice(0, -3) : s);
 };
 const MONEY2 = (p) => '£' + (p / 100).toFixed(2);
 
@@ -99,6 +101,7 @@ export function check(mandate, cart, listings, now = new Date(), policy = null) 
   const active = baseline
     ? RULES.filter((r) => (policy?.baseline_rules ?? ['UNDISCLOSED_RECURRING', 'INJECTED_INSTRUCTION']).includes(r.code))
     : RULES;
+  sym = SYM[m.currency] ?? '£';
   const violations = [];
   for (const rule of active) {
     for (const v of rule.run(m, cart, byId, now)) {
