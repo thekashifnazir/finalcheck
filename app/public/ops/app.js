@@ -203,7 +203,9 @@ async function postSign(cart) {
       signal: AbortSignal.timeout(5000),
     });
     if (!(res.headers.get('content-type') || '').includes('json')) return null;
-    return { status: res.status, body: await res.json() };
+    const body = await res.json();
+    setTimeout(refreshFeed, 150); // our own event shows without waiting for the next poll
+    return { status: res.status, body };
   } catch (e) {
     console.warn('[finalcheck] /api/sign unavailable:', e.message);
     return null;
@@ -569,11 +571,67 @@ async function runVerify(tamper) {
   }
 }
 
+// ── live activity: every agent's refusals/receipts/orders from GET /api/events (ops view, so codes shown) ──
+const FEED_MAX = 15;
+const FEED_MS = 3000;
+const feedSeen = new Set();
+let feedOn = false;
+let feedFirst = true;
+
+const feedKey = (e) => [e.at, e.kind, e.agent, e.order_id ?? '', (e.violations ?? []).join(','), e.sig ?? ''].join('|');
+
+function feedRow(e, fresh) {
+  const li = el('li', fresh ? 'live-row new' : 'live-row');
+  li.dataset.kind = e.kind;
+  li.dataset.agent = e.agent ?? '';
+  li.dataset.at = e.at ?? '';
+  const t = e.at ? new Date(e.at).toLocaleTimeString('en-GB', { hour12: false }) : '';
+  const what = e.kind === 'refusal' ? (e.violations ?? []).join(', ')
+    : e.kind === 'receipt' && e.sig ? `sig ${shortHash(e.sig)}`
+    : e.order_id ?? '';
+  li.append(el('span', null, t), el('span', null, e.agent ?? '?'), el('span', null, e.kind), el('span', null, e.merchant ?? '—'), el('span', null, e.total ?? ''), el('span', null, what));
+  if (fresh) setTimeout(() => li.classList.remove('new'), 1500);
+  return li;
+}
+
+async function refreshFeed() {
+  if (!feedOn) return;
+  let events;
+  try {
+    const res = await fetch('/api/events', { signal: AbortSignal.timeout(4000) });
+    if (!res.ok || !(res.headers.get('content-type') || '').includes('json')) throw new Error(`HTTP ${res.status}`);
+    events = (await res.json()).events ?? [];
+  } catch {
+    feedOn = false; // no events API (static mode or gone): stop quietly
+    $('feed').hidden = true;
+    return;
+  }
+  const rows = events.slice(0, FEED_MAX).map((e) => {
+    const k = feedKey(e);
+    const fresh = !feedFirst && !feedSeen.has(k);
+    feedSeen.add(k);
+    return feedRow(e, fresh);
+  });
+  feedFirst = false;
+  $('feed-rows').replaceChildren(...rows);
+  $('feed-empty').hidden = rows.length > 0;
+  $('feed').hidden = false;
+}
+
+// Started only after /api/keys proves a Worker is there, so static mode makes no extra 404s.
+function startFeed() {
+  feedOn = true;
+  refreshFeed();
+  setInterval(() => { if (document.visibilityState === 'visible') refreshFeed(); }, FEED_MS);
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') refreshFeed(); });
+}
+
 async function loadKeys() {
   try {
     const res = await fetch('/api/keys', { signal: AbortSignal.timeout(5000) });
     if (!res.ok || !(res.headers.get('content-type') || '').includes('json')) return;
     keys = await res.json();
+    startFeed();
     $('pubkey').textContent = keys.signing && keys.public_key?.x
       ? `Public key: ${keys.kid} · x=${keys.public_key.x.slice(0, 12)}…`
       : 'Public key: none — receipts carry a sha256-demo integrity hash only';

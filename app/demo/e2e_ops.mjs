@@ -30,6 +30,10 @@ page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
 page.on('pageerror', (e) => errors.push('pageerror: ' + e.message));
 page.on('requestfailed', (r) => failed.push(r.url()));
 page.on('response', (r) => { if (r.status() >= 400) failed.push(`${r.status()} ${r.url()}`); });
+// Live feed: wait for a row from this console run (at ≥ since − 2s slack), so older events can't satisfy it.
+const feedRow = (kind, since) => page.waitForFunction(([k, t]) =>
+  [...document.querySelectorAll('#feed-rows .live-row')].some((r) => r.dataset.kind === k && r.dataset.agent === 'console' && Date.parse(r.dataset.at) >= t - 2000),
+  [kind, since], { timeout: 8000 }).then(() => true, () => false);
 const shot = async (name) => { if (shots) await page.screenshot({ path: `${shots}/${name}.png`, fullPage: true }); };
 
 try {
@@ -59,6 +63,7 @@ try {
   await shot('2-shopping');
 
   // 3 — guard
+  const tGuard = Date.now();
   await page.click('#btn-guard');
   const flags = await page.locator('.flag').count();
   ok('exactly 3 .flag', flags === 3, flags);
@@ -66,6 +71,9 @@ try {
   ok('every flag has a .basis with "·"', basis.length === 3 && basis.every((b) => b.includes('·')), basis);
   ok('#inj1 visible after guard', await page.locator('#inj1').isVisible(), null);
   ok('#vmeta names policy', (await page.textContent('#vmeta'))?.includes('policy: uk-2026-10'), await page.textContent('#vmeta'));
+  ok('live feed: visible below the columns', await page.locator('#feed').isVisible(), null);
+  ok('live feed: refusal row after Guard', await feedRow('refusal', tGuard), await page.textContent('#feed-rows'));
+  ok('live feed: refusal row lists rule codes', /OVER_BUDGET, UNDISCLOSED_RECURRING, INJECTED_INSTRUCTION/.test(await page.textContent('#feed-rows')), null);
   ok('pill 3 VIOLATIONS BLOCKED', (await page.textContent('#status-pill')) === '3 VIOLATIONS BLOCKED', await page.textContent('#status-pill'));
   await shot('3-violations');
 
@@ -76,6 +84,7 @@ try {
   ok('.cart is unique (stage 4 uses .cart2)', (await page.locator('.cart').count()) === 1, await page.locator('.cart').count());
 
   // 5 — approve & sign
+  const tApprove = Date.now();
   await page.click('#btn-approve');
   await page.waitForSelector('#receipt.on');
   await page.waitForTimeout(800); // let a server receipt (if any) replace the client one
@@ -87,6 +96,8 @@ try {
   await page.click('#btn-copy');
   const copied = await page.evaluate(() => navigator.clipboard.readText());
   ok('copy button copies full receipt JSON', JSON.parse(copied).type === 'finalcheck/cart-mandate-receipt', copied.slice(0, 80));
+  ok('live feed: receipt row with short sig after Approve', await feedRow('receipt', tApprove) && /sig 0x[0-9a-f]{4}…[0-9a-f]{4}/.test(await page.textContent('#feed-rows')), await page.textContent('#feed-rows'));
+  ok('live feed: at most 15 rows', (await page.locator('#feed-rows .live-row').count()) <= 15, null);
   // verify → tamper → invalid (against the server receipt once it has replaced the client one)
   await page.waitForFunction(() => document.getElementById('receipt').dataset.source === 'server', null, { timeout: 6000 }).catch(() => {});
   ok('verify: public key line', /^Public key: /.test(await page.textContent('#pubkey')), await page.textContent('#pubkey'));

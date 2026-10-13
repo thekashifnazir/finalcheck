@@ -19,6 +19,11 @@
   .verify-result[data-valid="true"] { color: #080; }
   .verify-result[data-valid="false"] { color: #b00; }
   .verify-result mark { background: #ffe08a; }
+  .live { margin-top: 12px; }
+  .live-rows { list-style: none; margin: 0; padding: 0; font: 12px monospace; }
+  .live-row { display: grid; grid-template-columns: 70px 60px 70px 1fr 80px 2fr; gap: 8px; padding: 4px 6px; border-bottom: 1px solid #eee; transition: background 1.5s; }
+  .live-row[data-kind="refusal"] { color: #b00; }
+  .live-row.new { background: #fff3cd; }
 </style>
 </head>
 <body data-state="IDLE">
@@ -104,6 +109,12 @@
     <p class="sub" id="verdict-hint">Run the agent to see the check.</p>
   </section>
 </main>
+
+<section class="card live" id="feed" aria-labelledby="h-feed" hidden>
+  <h2 id="h-feed">Live activity · all agents</h2>
+  <ol class="live-rows" id="feed-rows" aria-live="polite"></ol>
+  <p class="sub" id="feed-empty">No agent activity yet.</p>
+</section>
 
 <script type="module" src="/ops/app.js"></script>
 </body>
