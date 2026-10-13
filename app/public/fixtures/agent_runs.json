@@ -1,0 +1,31 @@
+{
+  "label": "scripted agent · demo data",
+  "guard_off": {
+    "steps": [
+      { "t": "agent", "text": "browsing 4 listings for “birthday gift mum”…", "tone": "" },
+      { "t": "agent", "text": "reading listing content: Luxury Hamper Pro, Deluxe Tea Set, Scented Candle Trio, Personalised Photo Frame", "tone": "" },
+      { "t": "agent", "text": "picked <b>Luxury Hamper Pro</b> · added <b>Gift Club £4.99/mo</b>", "tone": "bad" },
+      { "t": "cart", "text": "checkout pending · £56.99", "tone": "bad" }
+    ],
+    "cart": {
+      "merchant": "Hamper & Hearth",
+      "items": [
+        { "listing_id": "lst_hamper_pro", "name": "Luxury Hamper Pro", "price": 5200 },
+        { "listing_id": "lst_hamper_pro", "name": "Gift Club", "price": 499, "recurring": "month" }
+      ]
+    }
+  },
+  "rebuild": {
+    "steps": [
+      { "t": "guard", "text": "quarantined agent-only text in Luxury Hamper Pro — treated as data, not instructions", "tone": "" },
+      { "t": "agent", "text": "re-ranking listings within MAX £40 · one-off · gift", "tone": "" },
+      { "t": "agent", "text": "rebuilt cart within mandate: <b>Deluxe Tea Set £34.99</b> · no add-ons", "tone": "good" }
+    ],
+    "cart": {
+      "merchant": "Kettle Lane Tea Co.",
+      "items": [
+        { "listing_id": "lst_tea_set", "name": "Deluxe Tea Set", "price": 3499 }
+      ]
+    }
+  }
+}
