@@ -96,17 +96,41 @@ async function renderProtection() {
     sub.className = 'c-tile-sub';
     sub.textContent = text;
     li.append(icon, title, sub);
+    const ref = shortRef(state.policy.rules?.[t.rule]?.ref);
+    if (ref) {
+      const law = document.createElement('span');
+      law.className = 'c-tile-law';
+      law.textContent = `Basis: ${ref}`;
+      li.append(law);
+    }
     return li;
   }));
+  // "Backed by": the distinct sources behind the baseline rules of the loaded pack.
+  let backed = list.parentElement.querySelector('.c-backed');
+  if (!backed) {
+    backed = document.createElement('p');
+    backed.className = 'c-backed';
+    list.after(backed);
+  }
+  const refs = [...new Set((state.policy.baseline_rules ?? []).flatMap((c) => splitRefs(state.policy.rules?.[c]?.ref)))];
+  backed.textContent = refs.length ? `Backed by (illustrative mapping): ${refs.join(' · ')}` : '';
 }
+
+// "DMCC Act 2024, Sch 20 (drip pricing)" → "DMCC Act 2024"; "UK GDPR …; PCI DSS" → both.
+function splitRefs(ref) {
+  return String(ref ?? '').split(/;/)
+    .map((r) => r.trim().replace(/\s*\([^()]*\)$/, '').split(/, | — |: /)[0].replace(/\s*\([^()]*\)$/, '').trim())
+    .filter(Boolean);
+}
+const shortRef = (ref) => splitRefs(ref)[0] ?? '';
 
 // Short titles and icons for the 5 baseline bullets (same order in every policy pack).
 const TILES = [
-  { title: 'Scam cash-outs blocked', icon: '<path d="M12 3 5 6v6c0 4.5 3 7.7 7 9 4-1.3 7-4.5 7-9V6z"/><path d="m9 12 2 2 4-4"/>' },
-  { title: 'No surprise sign-ups', icon: '<path d="M17 2l4 4-4 4"/><path d="M3 11V9a3 3 0 0 1 3-3h15"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a3 3 0 0 1-3 3H3"/>' },
-  { title: 'Hidden instructions ignored', icon: '<path d="M3 3l18 18"/><path d="M10.6 6.1A9.8 9.8 0 0 1 12 6c5 0 9 6 9 6a17 17 0 0 1-3 3.4"/><path d="M6.6 6.6C4.3 8 3 12 3 12s4 6 9 6a9 9 0 0 0 4.4-1.1"/>' },
-  { title: 'Lookalike shops flagged', icon: '<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/>' },
-  { title: 'Payment privacy', icon: '<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>' },
+  { title: 'Scam cash-outs blocked', rule: 'RESTRICTED_CATEGORY', icon: '<path d="M12 3 5 6v6c0 4.5 3 7.7 7 9 4-1.3 7-4.5 7-9V6z"/><path d="m9 12 2 2 4-4"/>' },
+  { title: 'No surprise sign-ups', rule: 'UNDISCLOSED_RECURRING', icon: '<path d="M17 2l4 4-4 4"/><path d="M3 11V9a3 3 0 0 1 3-3h15"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a3 3 0 0 1-3 3H3"/>' },
+  { title: 'Hidden instructions ignored', rule: 'INJECTED_INSTRUCTION', icon: '<path d="M3 3l18 18"/><path d="M10.6 6.1A9.8 9.8 0 0 1 12 6c5 0 9 6 9 6a17 17 0 0 1-3 3.4"/><path d="M6.6 6.6C4.3 8 3 12 3 12s4 6 9 6a9 9 0 0 0 4.4-1.1"/>' },
+  { title: 'Lookalike shops flagged', rule: 'MERCHANT_UNVERIFIED', icon: '<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/>' },
+  { title: 'Payment privacy', rule: 'DATA_EXFIL', icon: '<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>' },
 ];
 
 // ---- mandate card ----
@@ -169,6 +193,11 @@ function renderMandate() {
   }
   $('c-ask-toggle').checked = state.prefs.mandate_choice !== 'baseline';
   $('c-skip-confirm').hidden = state.prefs.mandate_choice !== 'baseline';
+  // Make the choice visible: once baseline-only is on, the Skip button says so instead of
+  // looking like it did nothing.
+  const baselineOn = state.prefs.mandate_choice === 'baseline';
+  $('c-skip').textContent = baselineOn ? 'Baseline only — on ✓' : 'Skip — baseline only';
+  $('c-skip').setAttribute('aria-pressed', String(baselineOn));
 }
 
 // The service parser is preferred; the in-page ruleset is the fallback.

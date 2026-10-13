@@ -369,6 +369,11 @@ html { scroll-behavior: smooth; }
 }
 .c-note strong { color: var(--c-heading); }
 
+/* ── legal basis ── */
+.c-tile-law { color: var(--c-ink-muted); font-size: var(--c-text-label); margin-top: var(--c-space-1); opacity: .85; }
+.c-backed { color: var(--c-ink-muted); font-size: var(--c-text-xs); margin: 0 0 var(--c-space-3); }
+.c-backed:empty { display: none; }
+
 @media (max-width: 760px) {
   #c-mandate-form:has(#c-chat-preview:not([hidden])) { grid-template-columns: minmax(0, 1fr); }
   #c-chat-preview, #c-mandate-active { grid-column: 1; grid-row: auto; max-width: none; }
