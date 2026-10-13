@@ -164,7 +164,7 @@ export async function signCart(store, env, { mandate, cart: rawCart, region, age
 
 async function handleSign(request, env, store) {
   const body = await readJSON(request);
-  const agent = typeof body.agent === 'string' && body.agent ? body.agent.slice(0, 40) : 'console';
+  const agent = 'console'; // agents pay through /mcp; this route is the ops console's
   return json(await signCart(store, env, { mandate: cleanMandate(body.mandate), cart: body.cart, region: body.region, agent }));
 }
 
@@ -176,7 +176,12 @@ export async function publicKeyInfo(env) {
 }
 
 export async function verify(env, receipt) {
-  return verifyReceipt(receipt, (await signingKey(env))?.publicKey ?? null);
+  const key = await signingKey(env);
+  // With a real key configured, a hash-only receipt proves nothing: anyone can recompute a hash.
+  if (key && receipt?.sig?.alg !== 'Ed25519') {
+    return { valid: false, alg: receipt?.sig?.alg ?? null, reason: 'not signed with the FinalCheck key' };
+  }
+  return verifyReceipt(receipt, key?.publicKey ?? null);
 }
 
 const ROUTES = ['/api/prefs', '/api/policy', '/api/mandate', '/api/mandate/revoke', '/api/events', '/api/events/reset', '/api/sign', '/api/keys', '/api/verify'];

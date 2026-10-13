@@ -103,9 +103,25 @@ async function handleParse(request, env) {
   return json(fallback_reason ? { mandate, fallback_reason } : { mandate });
 }
 
+// Cross-site request guard for every state-changing call. A JSON content-type can't be sent
+// cross-origin without a CORS preflight (which this Worker never answers), and a browser's
+// Origin header must match this host. Non-browser clients (agents, curl) send no Origin.
+function rejectCrossSite(request, url) {
+  if (request.method !== 'POST') return null;
+  const origin = request.headers.get('origin');
+  if (origin && origin !== url.origin) return json({ error: 'cross-site request refused' }, 403);
+  const type = request.headers.get('content-type') ?? '';
+  if (!type.toLowerCase().startsWith('application/json')) return json({ error: 'content-type must be application/json' }, 415);
+  return null;
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+    if (url.pathname === '/mcp' || url.pathname.startsWith('/api/')) {
+      const refused = rejectCrossSite(request, url);
+      if (refused) return refused;
+    }
     if (url.pathname === '/mcp') return handleMcp(request, env, url);
     if (url.pathname === '/api/health') return json({ ok: true, llm: llmProvider(env) ?? 'ruleset' });
     if (url.pathname === '/api/parse') {

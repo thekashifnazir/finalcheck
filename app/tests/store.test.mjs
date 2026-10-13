@@ -80,7 +80,7 @@ test('sign tea set → receipt + order events, verifiable demo sig', async () =>
   assert.equal(receipt.merchant, 'Kettle Lane Tea Co.');
   assert.equal(receipt.total, '£34.99');
   assert.equal(receipt.cap, '£40.00');
-  assert.equal(receipt.agent, 'claude');
+  assert.equal(receipt.agent, 'console'); // /api/sign always records the console; agents use /mcp
   assert.equal(receipt.sig, sig.value);
   assert.deepEqual(receipt.items, [{ name: 'Deluxe Tea Set', price: '£34.99' }]);
   assert.equal(order.order_id, r.body.order_id);
@@ -174,4 +174,29 @@ test('agents_paused must be a boolean', async () => {
   const { validatePrefsPatch } = await import('../worker/store.js');
   assert.deepEqual(validatePrefsPatch({ agents_paused: true }), { agents_paused: true });
   assert.throws(() => validatePrefsPatch({ agents_paused: 'yes' }), /true or false/);
+});
+
+test('cross-site guard: wrong Origin or non-JSON POST refused before any handler runs', async () => {
+  const { default: worker } = await import('../worker/index.js');
+  const env = { FC_STORE: memoryKV(), ASSETS: { fetch: () => new Response('asset') } };
+  const post = (headers) => worker.fetch(new Request('http://local/api/prefs', { method: 'POST', headers, body: '{"agents_paused":false}' }), env);
+  assert.equal((await post({ 'content-type': 'text/plain' })).status, 415);
+  assert.equal((await post({ 'content-type': 'application/json', origin: 'https://evil.example' })).status, 403);
+  assert.equal((await post({ 'content-type': 'application/json', origin: 'http://local' })).status, 200);
+  const mcp = await worker.fetch(new Request('http://local/mcp', { method: 'POST', headers: { 'content-type': 'text/plain' }, body: '{}' }), env);
+  assert.equal(mcp.status, 415);
+});
+
+test('verify: a hash-only receipt is not valid when a signing key exists', async () => {
+  const { verify } = await import('../worker/console.js');
+  const { buildReceipt } = await import('../public/lib/receipt.js');
+  const { generateKeyPair } = await import('node:crypto');
+  const { privateKey, publicKey } = await new Promise((res, rej) => generateKeyPair('ed25519', (e, pub, priv) => (e ? rej(e) : res({ publicKey: pub, privateKey: priv }))));
+  const env = {
+    FC_SIGNING_PRIVATE_JWK: JSON.stringify(privateKey.export({ format: 'jwk' })),
+    FC_SIGNING_PUBLIC_JWK: JSON.stringify(publicKey.export({ format: 'jwk' })),
+  };
+  const forged = { sig: { alg: 'sha256-demo', value: '0xabc' }, cart_mandate: { total: '£9999.99' } };
+  const r = await verify(env, forged);
+  assert.equal(r.valid, false);
 });
