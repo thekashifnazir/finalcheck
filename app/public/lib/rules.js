@@ -39,7 +39,7 @@ export const RULES = [
       return recurringItems(cart).map((i) => ({
         severity: 'red',
         title: 'Undisclosed recurring charge',
-        detail: `“${i.name} ${MONEY2(i.price)}/${i.recurring === 'month' ? 'mo' : i.recurring}” — mandate says one-off`,
+        detail: `“${i.name} ${MONEY2(i.price)}/${i.recurring === 'month' ? 'mo' : i.recurring}” — ${m.baseline ? 'recurring charge needs explicit consent' : 'mandate says one-off'}`,
         evidence: { listing_id: i.listing_id, item: i.name },
       }));
     },
@@ -88,11 +88,20 @@ export const RULES = [
   },
 ];
 
+// mandate === null → baseline mode: only the policy's baseline_rules run, against a
+// pseudo-mandate (no cap, no category, no recurring without consent).
 export function check(mandate, cart, listings, now = new Date(), policy = null) {
   const byId = Object.fromEntries(listings.map((l) => [l.id, l]));
+  const baseline = mandate == null;
+  const m = baseline
+    ? { currency: policy?.currency ?? 'GBP', allow_recurring: false, one_off: true, category: null, baseline: true }
+    : mandate;
+  const active = baseline
+    ? RULES.filter((r) => (policy?.baseline_rules ?? ['UNDISCLOSED_RECURRING', 'INJECTED_INSTRUCTION']).includes(r.code))
+    : RULES;
   const violations = [];
-  for (const rule of RULES) {
-    for (const v of rule.run(mandate, cart, byId, now)) {
+  for (const rule of active) {
+    for (const v of rule.run(m, cart, byId, now)) {
       const out = { code: rule.code, ...v };
       const p = policy?.rules?.[rule.code];
       if (p) { out.basis = p.basis; out.ref = p.ref; }
@@ -102,8 +111,9 @@ export function check(mandate, cart, listings, now = new Date(), policy = null) 
   const one_off_total = sum(oneOffItems(cart));
   const recurring_total = sum(recurringItems(cart));
   const result = {
+    mode: baseline ? 'baseline' : 'mandate',
     violations,
-    rules_checked: RULES.length,
+    rules_checked: active.length,
     one_off_total,
     recurring_total,
     pending_total: one_off_total + recurring_total,

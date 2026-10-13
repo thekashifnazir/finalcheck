@@ -60,3 +60,14 @@ test('policy pack attaches basis + ref; absent policy leaves no basis key', () =
   const bare = check(mandate, runs.guard_off.cart, listings, NOW);
   assert.ok(!('basis' in bare.violations[0]));
 });
+
+test('baseline mode (no mandate) → only recurring + injection on the guard-off cart', () => {
+  const policy = { id: 'uk', baseline_rules: ['UNDISCLOSED_RECURRING', 'INJECTED_INSTRUCTION', 'RESTRICTED_CATEGORY'] };
+  const r = check(null, runs.guard_off.cart, listings, NOW, policy);
+  assert.equal(r.mode, 'baseline');
+  assert.deepEqual(r.violations.map((v) => v.code), ['UNDISCLOSED_RECURRING', 'INJECTED_INSTRUCTION']);
+  assert.match(r.violations[0].detail, /recurring charge needs explicit consent/);
+  assert.equal(r.rules_checked, 2);
+  const pricey = { merchant: 'x', items: [{ listing_id: 'lst_tea_set', name: 'Teapot', price: 50000 }] };
+  assert.equal(check(null, pricey, listings, NOW, policy).violations.length, 0);
+});
