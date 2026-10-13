@@ -112,8 +112,7 @@ function renderMandate() {
 }
 
 // The service parser is preferred; the in-page ruleset is the fallback.
-// The region's currency is the mandate's currency. Until the shared parser reads
-// S$/$, the fallback reads those amounts by treating the symbol as £.
+// The region's currency is the mandate's currency.
 async function parseMandate(text) {
   const currency = state.policy.currency;
   let m;
@@ -121,7 +120,7 @@ async function parseMandate(text) {
     ({ mandate: m } = await postJSON('/api/parse', { text, currency }));
     if (!m) throw new Error('no mandate in response');
   } catch {
-    m = parseIntent(text.replace(/S?\$/g, '£'), new Date());
+    m = parseIntent(text, new Date(), { currency });
   }
   return validateMandate({ ...m, raw: text, currency });
 }
@@ -171,7 +170,10 @@ function sentence(ev) {
   }
   if (ev.kind === 'refusal') {
     const codes = (ev.violations ?? []).map((v) => (typeof v === 'string' ? v : v.code));
-    const reasons = [...new Set(codes.map((c) => REASONS[c] ?? 'it broke one of your protection rules'))];
+    const cap = ev.cap ? ev.cap.replace(/\.00$/, '') : null;
+    const reason = (c) => (c === 'OVER_BUDGET' && cap ? `it was over your ${cap} limit` : REASONS[c])
+      ?? 'it broke one of your protection rules';
+    const reasons = [...new Set(codes.map(reason))];
     return `⛔ Stopped: ${reasons.join('; ') || 'it broke one of your protection rules'}`;
   }
   if (ev.kind === 'order') return `🧾 Order accepted by the shop · ${ev.order_id ?? ''}`.trim();
