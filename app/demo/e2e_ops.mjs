@@ -1,7 +1,8 @@
 // e2e_ops.mjs — drives the ops console through all five stages and asserts each one.
 // Usage (app running first):
 //   NODE_PATH=/path/to/node_modules KIT_APP_URL=http://localhost:8787/ops/ node app/demo/e2e_ops.mjs
-// Optional: E2E_SHOTS=/some/dir saves a screenshot per stage. Exits 1 on any failed check.
+// Optional: E2E_SHOTS=/some/dir saves a screenshot per stage; E2E_SCENARIO=A|B|C runs one scenario
+// (default: all). Exits 1 on any failed check.
 import { createRequire } from 'node:module';
 
 // require(), not import: CommonJS resolution honours NODE_PATH, ESM does not.
@@ -9,8 +10,11 @@ const { chromium } = createRequire(import.meta.url)('playwright');
 
 const url = process.env.KIT_APP_URL ?? 'http://localhost:8787/ops/';
 const shots = process.env.E2E_SHOTS;
+const only = process.env.E2E_SCENARIO;
+const want = (k) => !only || only === k;
 
 const results = [];
+let source = 'n/a';
 const ok = (name, cond, got) => {
   results.push({ name, pass: !!cond });
   console.log(`${cond ? 'PASS' : 'FAIL'}  ${name}${cond ? '' : `  (got: ${JSON.stringify(got)})`}`);
@@ -30,6 +34,8 @@ const shot = async (name) => { if (shots) await page.screenshot({ path: `${shots
 
 try {
   await page.goto(url, { waitUntil: 'networkidle' });
+  ok('scenario select defaults to A', (await page.inputValue('#scenario')) === 'A', await page.inputValue('#scenario'));
+  if (want('A')) {
   ok('lands IDLE', (await page.textContent('#status-pill')) === 'IDLE', await page.textContent('#status-pill'));
 
   // 1 — mandate
@@ -81,7 +87,7 @@ try {
   await page.click('#btn-copy');
   const copied = await page.evaluate(() => navigator.clipboard.readText());
   ok('copy button copies full receipt JSON', JSON.parse(copied).type === 'finalcheck/cart-mandate-receipt', copied.slice(0, 80));
-  const source = (await page.getAttribute('#receipt', 'data-source')) ?? 'client';
+  source = (await page.getAttribute('#receipt', 'data-source')) ?? 'client';
   await shot('5-signed');
 
   // reset
@@ -115,12 +121,81 @@ try {
 
   // Baseline approve — receipt comes from the server (no mandate to hash client-side)
   await page.click('#btn-fix');
-  ok('baseline: re-check 0 violations', (await page.textContent('#okline'))?.includes('0 violations · 2 rules · policy sg-2026-10'), await page.textContent('#okline'));
+  ok('baseline: re-check 0 violations', (await page.textContent('#okline'))?.includes('0 violations · 9 rules · policy sg-2026-10'), await page.textContent('#okline'));
   await page.click('#btn-approve');
   await page.waitForSelector('#receipt.on', { timeout: 8000 });
   const bPre = await page.textContent('#receipt-pre');
   ok('baseline: server receipt with order + baseline pack', bPre.includes('baseline · sg-2026-10') && /"order":\s+"ord_/.test(bPre), bPre);
   ok('baseline: pack select locked after signing', await page.locator('#pack-select').isDisabled(), null);
+
+  }
+
+  const codes2 = () => page.locator('.flag').evaluateAll((els) => els.map((e) => e.dataset.code));
+  const arm = async (key) => {
+    await page.click('#btn-reset');
+    await page.waitForLoadState('networkidle');
+    await page.selectOption('#scenario', key);
+    await page.click('#btn-mandate');
+    await page.waitForSelector('#mandate-card.on');
+    await page.waitForFunction(() => !document.getElementById('btn-mandate').disabled, null, { timeout: 12000 });
+  };
+
+  if (want('B')) {
+    // B — lookalike merchant + drip fee + card number in the gift message
+    await arm('B');
+    ok('B: intent switched', (await page.inputValue('#intent')).startsWith('Birthday hamper'), await page.inputValue('#intent'));
+    await page.click('#btn-run');
+    ok('B: cart total £44.98 incl. fee row', (await page.textContent('.cart .total')).includes('£44.98') && (await page.locator('.cart .row.fee').count()) === 1, await page.textContent('.cart'));
+    ok('B: only the scenario\'s 4 listings', (await page.locator('.listing').count()) === 4, await page.locator('.listing').count());
+    await page.click('#btn-guard');
+    const b = await codes2();
+    ok('B: exactly 5 flags', JSON.stringify(b) === JSON.stringify(['OVER_BUDGET', 'MERCHANT_UNVERIFIED', 'PRICE_DRIFT', 'FIRST_TIME_PAYEE', 'DATA_EXFIL']), b);
+    ok('B: lookalike detail', (await page.textContent('#flags')).includes('2 characters off verified'), null);
+    ok('B: card number redacted', !/4532 0151 1283 0366/.test(await page.textContent('body')) && (await page.textContent('#flags')).includes('4532…0366'), null);
+    ok('B: no injection box revealed', (await page.locator('.hidden-inj.on').count()) === 0, null);
+    ok('B: #vmeta 13 rules', (await page.textContent('#vmeta')).startsWith('13 rules checked · 5 violations'), await page.textContent('#vmeta'));
+    await page.click('#btn-fix');
+    ok('B: rebuild 0 violations', (await page.textContent('#okline')).includes('0 violations'), await page.textContent('#okline'));
+    await page.click('#btn-approve');
+    await page.waitForSelector('#receipt.on');
+    ok('B: signed £36.50', (await page.textContent('#status-pill')) === 'SIGNED · £36.50 RELEASED', await page.textContent('#status-pill'));
+    await shot('B-signed');
+  }
+
+  if (want('C')) {
+    // C — coerced gift-card purchase: no compliant cart exists → halt + refusal record
+    await arm('C');
+    ok('C: mandate MAX £300', (await page.locator('.chip').first().textContent()) === 'MAX £300', await page.locator('.chip').first().textContent());
+    await page.click('#btn-run');
+    ok('C: cart shows 3 × gift card, £300.00', (await page.textContent('.cart')).includes('3 × Apple Gift Card £100') && (await page.textContent('.cart .total')).includes('£300.00'), await page.textContent('.cart'));
+    await page.click('#btn-guard');
+    const c = await codes2();
+    ok('C: exactly 4 flags', JSON.stringify(c) === JSON.stringify(['RESTRICTED_CATEGORY', 'FIRST_TIME_PAYEE', 'PRESSURE_CUE', 'QUANTITY_ANOMALY']), c);
+    ok('C: pill 4 VIOLATIONS BLOCKED', (await page.textContent('#status-pill')) === '4 VIOLATIONS BLOCKED', await page.textContent('#status-pill'));
+    await page.click('#btn-fix');
+    ok('C: halt offered, approve hidden', (await page.locator('#btn-halt').isVisible()) && !(await page.locator('#btn-approve').isVisible()), null);
+    ok('C: halt note', (await page.textContent('#halt-note')).includes('number you already have'), null);
+    await page.click('#btn-halt');
+    ok('C: pill HALTED · £0 MOVED', (await page.textContent('#status-pill')) === 'HALTED · £0 MOVED', await page.textContent('#status-pill'));
+    ok('C: red refusal record, no signature', (await page.locator('#receipt.refusal').isVisible()) && (await page.textContent('#receipt-stamp')).includes('REFUSAL RECORD') && !(await page.locator('.fullsig').isVisible()), await page.textContent('#receipt-stamp'));
+    await page.click('#btn-copy');
+    const rec = JSON.parse(await page.evaluate(() => navigator.clipboard.readText()));
+    ok('C: copy gives refusal record JSON, nothing paid', rec.type === 'finalcheck/refusal-record' && rec.paid === '£0.00' && rec.refused.length === 4, rec);
+    await shot('C-refusal');
+
+    // Switch back to A without a reload → normal receipt styling returns
+    await page.selectOption('#scenario', 'A');
+    ok('A after C: stages cleared, refusal styling gone', !(await page.locator('#receipt').isVisible()) && (await page.locator('#receipt.refusal').count()) === 0 && (await page.textContent('#status-pill')) === 'IDLE', null);
+    await page.click('#btn-mandate');
+    await page.waitForFunction(() => !document.getElementById('btn-mandate').disabled, null, { timeout: 12000 });
+    await page.click('#btn-run');
+    await page.click('#btn-guard');
+    ok('A after C: 3 flags + #inj1 visible', (await page.locator('.flag').count()) === 3 && (await page.locator('#inj1').isVisible()), null);
+    await page.click('#btn-fix');
+    await page.click('#btn-approve');
+    await page.waitForSelector('#receipt.on');
+    ok('A after C: signed intent receipt stamp', (await page.textContent('#receipt-stamp')).includes('Intent receipt') && (await page.locator('.fullsig').isVisible()), await page.textContent('#receipt-stamp'));
+  }
 
   ok('0 console errors', errors.length === 0, errors);
   ok('0 failed requests', failed.length === 0, failed);

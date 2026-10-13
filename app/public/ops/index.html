@@ -10,6 +10,11 @@
   .modes { margin: 12px 0 0; padding: 8px 10px; border: 1px solid #ddd; font-size: 13px; }
   .modes legend { font-size: 11px; color: #666; text-transform: uppercase; }
   .modes label { display: block; margin: 4px 0; }
+  [hidden] { display: none !important; } /* styles.css sets button{display:block} */
+  .scenario-pick { display: block; font-size: 13px; margin-bottom: 4px; }
+  .receipt.refusal { border-color: #b00; }
+  .receipt.refusal .stamp { color: #b00; }
+  .halt-note { font-size: 13px; color: #b00; }
 </style>
 </head>
 <body data-state="IDLE">
@@ -50,6 +55,7 @@
 
   <section class="card" id="panel-agent" aria-labelledby="h-agent">
     <h2 id="h-agent">2 · Agent <small>scripted agent · demo data</small></h2>
+    <label class="scenario-pick">Scenario <select id="scenario" autocomplete="off"><option value="A">A</option></select></label>
     <button type="button" class="ghost" id="btn-run" disabled>Let the agent shop — guard off</button>
     <div id="stage2" data-state="hidden">
       <ol class="feed" id="feed2"></ol>
@@ -61,7 +67,9 @@
       <ol class="feed" id="feed4"></ol>
       <div class="cart2" id="cart2"></div>
       <p class="okline" id="okline"></p>
+      <p class="halt-note" id="halt-note" hidden>Call Mum on a number you already have. Nothing was paid.</p>
       <button type="button" id="btn-approve">Approve &amp; sign</button>
+      <button type="button" id="btn-halt" hidden>Done — nothing paid</button>
     </div>
   </section>
 
@@ -73,7 +81,7 @@
       <button type="button" class="ghost" id="btn-fix">Reject — send back to agent</button>
     </div>
     <article class="receipt" id="receipt" data-state="hidden">
-      <h3 class="stamp">✓ Intent receipt — signed</h3>
+      <h3 class="stamp" id="receipt-stamp">✓ Intent receipt — signed</h3>
       <pre id="receipt-pre"></pre>
       <details class="fullsig">
         <summary>Full signature</summary>
