@@ -87,6 +87,20 @@ try {
   await page.click('#btn-copy');
   const copied = await page.evaluate(() => navigator.clipboard.readText());
   ok('copy button copies full receipt JSON', JSON.parse(copied).type === 'finalcheck/cart-mandate-receipt', copied.slice(0, 80));
+  // verify → tamper → invalid (against the server receipt once it has replaced the client one)
+  await page.waitForFunction(() => document.getElementById('receipt').dataset.source === 'server', null, { timeout: 6000 }).catch(() => {});
+  ok('verify: public key line', /^Public key: /.test(await page.textContent('#pubkey')), await page.textContent('#pubkey'));
+  ok('verify: buttons shown on signed receipt', (await page.locator('#btn-verify').isVisible()) && (await page.locator('#btn-tamper').isVisible()), null);
+  await page.click('#btn-verify');
+  await page.waitForFunction(() => document.getElementById('verify-result').dataset.valid !== undefined, null, { timeout: 6000 });
+  const v1 = await page.textContent('#verify-result');
+  ok('verify: signature valid', /^✓ Valid · (Ed25519 · key fc-|sha256-demo \(no signing key\))/.test(v1), v1);
+  await page.click('#btn-tamper');
+  await page.waitForFunction(() => document.getElementById('verify-result').dataset.valid === 'false', null, { timeout: 6000 });
+  const v2 = await page.textContent('#verify-result');
+  ok('tamper: invalid — signature does not match', v2.includes('✗ Invalid — signature does not match receipt'), v2);
+  ok('tamper: edited field highlighted', (await page.textContent('#verify-result mark')) === '“£3.49”' && v2.includes('cart_mandate.total'), v2);
+  ok('tamper: original receipt untouched', (await page.evaluate(() => window.__receipt.cart_mandate.total)) === '£34.99', null);
   source = (await page.getAttribute('#receipt', 'data-source')) ?? 'client';
   await shot('5-signed');
 
@@ -184,6 +198,7 @@ try {
     await page.click('#btn-halt');
     ok('C: pill HALTED · £0 MOVED', (await page.textContent('#status-pill')) === 'HALTED · £0 MOVED', await page.textContent('#status-pill'));
     ok('C: red refusal record, no signature', (await page.locator('#receipt.refusal').isVisible()) && (await page.textContent('#receipt-stamp')).includes('REFUSAL RECORD') && !(await page.locator('.fullsig').isVisible()), await page.textContent('#receipt-stamp'));
+    ok('C: no verify buttons on a refusal record', !(await page.locator('#btn-verify').isVisible()) && !(await page.locator('#btn-tamper').isVisible()), null);
     await page.click('#btn-copy');
     const rec = JSON.parse(await page.evaluate(() => navigator.clipboard.readText()));
     ok('C: copy gives refusal record JSON, nothing paid', rec.type === 'finalcheck/refusal-record' && rec.paid === '£0.00' && rec.refused.length === 4, rec);

@@ -15,6 +15,10 @@
   .receipt.refusal { border-color: #b00; }
   .receipt.refusal .stamp { color: #b00; }
   .halt-note { font-size: 13px; color: #b00; }
+  .pubkey, .verify-result { font: 11.5px monospace; margin: 6px 0 0; }
+  .verify-result[data-valid="true"] { color: #080; }
+  .verify-result[data-valid="false"] { color: #b00; }
+  .verify-result mark { background: #ffe08a; }
 </style>
 </head>
 <body data-state="IDLE">
@@ -89,6 +93,12 @@
       </details>
       <p class="siglabel">demo signature — SHA-256 of the receipt JSON, not a cryptographic key signature</p>
       <button type="button" class="ghost copy" id="btn-copy">Copy receipt JSON</button>
+      <div class="verify" id="verify-box" hidden>
+        <p class="pubkey" id="pubkey"></p>
+        <button type="button" class="ghost" id="btn-verify">Verify signature</button>
+        <button type="button" class="ghost" id="btn-tamper">Tamper: change total to £3.49</button>
+        <p class="verify-result" id="verify-result" aria-live="polite"></p>
+      </div>
       <p class="dispute on" id="dispute"><strong>Dispute-ready:</strong> keep this receipt. If the charge turns out wrong, it shows exactly what you authorised and what the agent bought.<span class="basis" id="receipt-basis"></span></p>
     </article>
     <p class="sub" id="verdict-hint">Run the agent to see the check.</p>

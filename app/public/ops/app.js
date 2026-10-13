@@ -12,6 +12,7 @@ const PARSED_BY = { ruleset: 'ruleset', anthropic: 'claude', openai: 'openai' };
 let state = 'IDLE';
 let data = null;          // { listings, byId, scenarios, trust, policy }
 let scenarioKey = 'A';
+let keys = null;          // GET /api/keys; null → no server to verify against (static mode), buttons stay hidden
 let runToken = 0;         // bumped on scenario reset so late /api/sign replies can't touch a new run
 let mandate = null;
 let fixVerdict = null;
@@ -372,7 +373,10 @@ async function approveBaseline(cart) {
 
 function renderReceipt(receipt, orderId = null) {
   setReceiptMode('signed');
-  window.__receipt = orderId ? { ...receipt, order_id: orderId } : receipt;
+  // Keep the receipt exactly as signed — adding order_id here would make every verify fail.
+  window.__receipt = receipt;
+  window.__order_id = orderId;
+  resetVerify(true);
   const flags = mandate
     ? [mandate.category, `≤${gbpShort(Number(mandate.max_amount))}`, mandate.one_off ? 'one-off' : 'recurring ok']
     : ['no mandate', `baseline · ${receipt.checks?.policy_pack ?? region}`];
@@ -424,6 +428,7 @@ function setReceiptMode(mode) {
     ? '<strong>Scam evidence:</strong> nothing was paid. Keep this record — it lists every rule the agent’s cart broke, for your bank or Action Fraud.<span class="basis" id="receipt-basis"></span>'
     : RECEIPT_COPY.dispute;
   for (const sel of ['.fullsig', '.siglabel']) $('receipt').querySelector(sel).hidden = refusal;
+  if (refusal) resetVerify(false);
 }
 
 function showHalt() {
@@ -497,6 +502,7 @@ function onScenarioChange(e) {
   $('halt-note').hidden = true;
   guardVerdict = fixVerdict = null;
   window.__receipt = undefined;
+  resetVerify(false);
   if (baseline) {
     setPill('BASELINE ARMED', 'armed');
     setState('MANDATE_ARMED');
@@ -507,6 +513,72 @@ function onScenarioChange(e) {
     $('btn-mandate').disabled = false;
     setPill('IDLE', '');
     setState('IDLE');
+  }
+}
+
+// ── verify: the server checks the signature over the canonical receipt; tampering any field breaks it ──
+function resetVerify(show) {
+  $('verify-box').hidden = !(show && keys);
+  $('verify-result').replaceChildren();
+  delete $('verify-result').dataset.valid;
+  for (const id of ['btn-verify', 'btn-tamper']) $(id).disabled = false;
+}
+
+async function postVerify(receipt) {
+  const res = await fetch('/api/verify', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ receipt }),
+    signal: AbortSignal.timeout(5000),
+  });
+  if (!(res.headers.get('content-type') || '').includes('json')) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+function showVerify(r, edited = null) {
+  const out = $('verify-result');
+  out.dataset.valid = String(!!r.valid);
+  const line = r.valid
+    ? (r.alg === 'Ed25519' ? `✓ Valid · Ed25519 · key ${r.kid}` : `✓ Valid · ${r.alg} (no signing key)`)
+    : `✗ Invalid — ${r.reason ?? 'signature does not match receipt'}`;
+  out.replaceChildren(el('span', null, line));
+  if (edited) {
+    const row = el('span', 'edited');
+    row.append(el('br'), document.createTextNode(`edited: ${edited.field} “${edited.from}” → `), el('mark', null, `“${edited.to}”`));
+    out.append(row);
+  }
+}
+
+async function runVerify(tamper) {
+  const btn = $(tamper ? 'btn-tamper' : 'btn-verify');
+  btn.disabled = true;
+  try {
+    const receipt = structuredClone(window.__receipt);
+    let edited = null;
+    if (tamper) {
+      edited = { field: 'cart_mandate.total', from: receipt.cart_mandate.total, to: '£3.49' };
+      receipt.cart_mandate.total = edited.to;
+    }
+    showVerify(await postVerify(receipt), edited);
+  } catch (e) {
+    console.warn('[finalcheck] /api/verify unavailable:', e.message);
+    $('verify-result').textContent = 'verify service unavailable — try again';
+    delete $('verify-result').dataset.valid;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function loadKeys() {
+  try {
+    const res = await fetch('/api/keys', { signal: AbortSignal.timeout(5000) });
+    if (!res.ok || !(res.headers.get('content-type') || '').includes('json')) return;
+    keys = await res.json();
+    $('pubkey').textContent = keys.signing && keys.public_key?.x
+      ? `Public key: ${keys.kid} · x=${keys.public_key.x.slice(0, 12)}…`
+      : 'Public key: none — receipts carry a sha256-demo integrity hash only';
+  } catch (e) {
+    console.warn('[finalcheck] /api/keys unavailable — verify hidden:', e.message);
   }
 }
 
@@ -528,6 +600,9 @@ async function boot() {
   $('pack-select').addEventListener('change', onPackChange);
   $('scenario').addEventListener('change', onScenarioChange);
   $('btn-halt').addEventListener('click', onHalt);
+  $('btn-verify').addEventListener('click', () => runVerify(false));
+  $('btn-tamper').addEventListener('click', () => runVerify(true));
+  loadKeys(); // not awaited: the default path never waits on it
   RECEIPT_COPY.stamp = $('receipt-stamp').textContent;
   RECEIPT_COPY.dispute = $('dispute').innerHTML;
   setState('IDLE');
