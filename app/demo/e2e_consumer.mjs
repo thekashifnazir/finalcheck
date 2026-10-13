@@ -179,6 +179,7 @@ try {
   await page.waitForSelector('#c-skip-confirm:not([hidden])');
   check('"No limit" → baseline only', !(await page.isChecked('#c-ask-toggle')));
   await page.click('#c-ask-toggle'); // back to "ask" so Skip below is a real change
+  await page.waitForSelector('#c-skip-confirm', { state: 'hidden' }); // wait for the re-render, not just the click
 
   await page.click('#c-skip');
   await page.waitForSelector('#c-skip-confirm:not([hidden])');

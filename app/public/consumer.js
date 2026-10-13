@@ -354,8 +354,9 @@ async function onReply(option) {
     say('finalcheck', "OK, no spending mandate. Baseline protection stays on, and your agent won't be asked again.");
     showReplies([]);
     chat.stage = 'review'; // next message starts a fresh request
-    await savePrefs({ mandate_choice: 'baseline' });
+    const saving = savePrefs({ mandate_choice: 'baseline' });
     renderMandate();
+    await saving;
     return;
   }
   answer(field, option.words);
@@ -408,19 +409,24 @@ async function onRevoke() {
   }
 }
 
+// Prefs handlers render first (savePrefs updates state.prefs synchronously), then wait
+// for the save, so the page never lags a network round-trip behind the click.
 async function onSkip() {
-  await savePrefs({ mandate_choice: 'baseline' });
+  const saving = savePrefs({ mandate_choice: 'baseline' });
   renderMandate();
+  await saving;
 }
 
 async function onAskToggle(e) {
-  await savePrefs({ mandate_choice: e.target.checked ? 'ask' : 'baseline' });
+  const saving = savePrefs({ mandate_choice: e.target.checked ? 'ask' : 'baseline' });
   renderMandate();
+  await saving;
 }
 
 async function onPause(e) {
-  await savePrefs({ agents_paused: e.target.checked });
+  const saving = savePrefs({ agents_paused: e.target.checked });
   renderPause();
+  await saving;
 }
 
 function renderPause() {
