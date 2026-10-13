@@ -2,6 +2,7 @@
 // The LLM parse is optional — any failure falls back to the keyword ruleset.
 import { parseIntent, validateMandate, mergeMandate, CATEGORIES } from '../public/lib/parse.js';
 import { handleConsole } from './console.js';
+import { handleMcp } from './mcp.js';
 
 const JSON_HEADERS = { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' };
 const json = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: JSON_HEADERS });
@@ -105,6 +106,7 @@ async function handleParse(request, env) {
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+    if (url.pathname === '/mcp') return handleMcp(request, env, url);
     if (url.pathname === '/api/health') return json({ ok: true, llm: llmProvider(env) ?? 'ruleset' });
     if (url.pathname === '/api/parse') {
       if (request.method !== 'POST') return json({ error: 'POST only' }, 405);
