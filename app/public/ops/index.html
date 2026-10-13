@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FinalCheck ops console</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%23333'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body data-state="IDLE">
+<p class="banner" id="demo-banner" role="note">DEMO DATA — scripted agent, seeded store, mocked payment rail. No real money moves. · Policy pack: UK (illustrative subset)</p>
+
+<header class="topbar">
+  <div class="brand">
+    <h1>FinalCheck</h1>
+    <p class="sub">Checks every purchase an AI agent tries to make against what you actually authorised.</p>
+  </div>
+  <output class="pill" id="status-pill" aria-live="polite">IDLE</output>
+  <button type="button" class="ghost reset" id="btn-reset">Reset demo</button>
+</header>
+
+<main class="grid">
+  <section class="card" id="panel-mandate" aria-labelledby="h-mandate">
+    <h2 id="h-mandate">1 · Mandate</h2>
+    <label for="intent" class="sub">Tell the agent what it may buy</label>
+    <textarea id="intent" rows="3" maxlength="500" autocomplete="off">Buy a birthday gift for my mum — under £40, one-off, no subscriptions</textarea>
+    <button type="button" id="btn-mandate">Set spending mandate</button>
+    <p class="err" id="mandate-err" role="alert"></p>
+    <div class="mandate" id="mandate-card" data-state="empty">
+      <div class="chips" id="chips"></div>
+      <p class="sub">Every agent action is checked against these limits.</p>
+      <p class="parsed-by" id="parsed-by"></p>
+    </div>
+  </section>
+
+  <section class="card" id="panel-agent" aria-labelledby="h-agent">
+    <h2 id="h-agent">2 · Agent <small>scripted agent · demo data</small></h2>
+    <button type="button" class="ghost" id="btn-run" disabled>Let the agent shop — guard off</button>
+    <div id="stage2" data-state="hidden">
+      <ol class="feed" id="feed2"></ol>
+      <div class="listings" id="listings"></div>
+      <div class="cart" id="cart1"></div>
+      <button type="button" class="danger" id="btn-guard">Re-run with FinalCheck →</button>
+    </div>
+    <div id="stage4" data-state="hidden">
+      <ol class="feed" id="feed4"></ol>
+      <div class="cart2" id="cart2"></div>
+      <p class="okline" id="okline"></p>
+      <button type="button" id="btn-approve">Approve &amp; sign</button>
+    </div>
+  </section>
+
+  <section class="card" id="panel-verdict" aria-labelledby="h-verdict">
+    <h2 id="h-verdict">3 · Verdict</h2>
+    <div class="verdict" id="verdict" data-state="hidden">
+      <ul class="flags" id="flags"></ul>
+      <p class="vmeta" id="vmeta"></p>
+      <button type="button" class="ghost" id="btn-fix">Reject — send back to agent</button>
+    </div>
+    <article class="receipt" id="receipt" data-state="hidden">
+      <h3 class="stamp">✓ Intent receipt — signed</h3>
+      <pre id="receipt-pre"></pre>
+      <details class="fullsig">
+        <summary>Full signature</summary>
+        <code id="sig-full"></code>
+      </details>
+      <p class="siglabel">demo signature — SHA-256 of the receipt JSON, not a cryptographic key signature</p>
+      <button type="button" class="ghost copy" id="btn-copy">Copy receipt JSON</button>
+      <p class="dispute on" id="dispute"><strong>Dispute-ready:</strong> keep this receipt. If the charge turns out wrong, it shows exactly what you authorised and what the agent bought.<span class="basis" id="receipt-basis"></span></p>
+    </article>
+    <p class="sub" id="verdict-hint">Run the agent to see the check.</p>
+  </section>
+</main>
+
+<script type="module" src="/ops/app.js"></script>
+</body>
+</html>

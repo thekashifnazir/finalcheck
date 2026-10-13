@@ -1,0 +1,55 @@
+/* Basic placeholder styles. The design team will replace these.
+   Hooks: element IDs, body[data-state], [data-state] on each stage, .flag[data-severity]. */
+* { box-sizing: border-box; }
+body { margin: 0; padding: 0 20px 20px; font: 15px/1.45 system-ui, sans-serif; color: #222; background: #f4f4f4; }
+.banner { margin: 0 -20px 12px; padding: 6px 20px; background: #fff3cd; font-size: 12px; }
+.topbar { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+.topbar h1 { margin: 0; font-size: 20px; }
+.sub { margin: 4px 0; color: #666; font-size: 13px; }
+.pill { margin-left: auto; padding: 2px 10px; border: 1px solid #999; border-radius: 99px; font: 600 11px monospace; }
+.grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; align-items: start; }
+.card { background: #fff; border: 1px solid #ccc; border-radius: 8px; padding: 14px; }
+.card h2 { margin: 0 0 10px; font-size: 13px; text-transform: uppercase; }
+.card h2 small { font-weight: normal; text-transform: none; color: #666; }
+textarea { width: 100%; font: inherit; padding: 6px; }
+button { display: block; width: 100%; margin-top: 8px; padding: 9px; font: inherit; font-weight: 600; cursor: pointer; }
+button:disabled { cursor: not-allowed; opacity: .5; }
+button.reset { display: inline-block; width: auto; margin: 0; padding: 4px 10px; font-size: 12px; }
+
+/* visibility — the state machine toggles .on / inline display */
+.mandate, .verdict, .receipt, .hidden-inj, .err, .dispute { display: none; }
+.mandate.on, .verdict.on, .receipt.on, .hidden-inj.on, .err.on, .dispute.on { display: block; }
+#stage2, #stage4 { display: none; }
+
+.chip { display: inline-block; margin: 2px 2px 0 0; padding: 2px 8px; border: 1px solid #999; border-radius: 4px; font: 12px monospace; }
+.parsed-by, .vmeta, .okline, .basis, .fullsig { font: 11px monospace; color: #666; }
+.err { color: #b00; font-size: 13px; }
+.feed { list-style: none; margin: 10px 0 0; padding: 0; font-size: 13px; }
+.frow { display: flex; gap: 8px; padding: 4px 6px; border-left: 3px solid #ddd; margin-bottom: 4px; }
+.frow .t { font: 11px monospace; color: #666; }
+.frow.bad { border-color: #b00; }
+.frow.good { border-color: #080; }
+.fade { opacity: 0; transition: opacity .3s; }
+.fade.on { opacity: 1; }
+.listing { margin-top: 6px; padding: 6px 8px; border: 1px solid #ccc; font-size: 13px; }
+.listing.picked { border-color: #c80; border-width: 2px; }
+.listing .price { float: right; font-family: monospace; }
+.listing .merchant { color: #666; font-size: 12px; }
+.hidden-inj { margin-top: 6px; padding: 4px 6px; border: 1px dashed #b00; color: #b00; font: 12px monospace; }
+.cart, .cart2 { margin-top: 8px; padding-top: 6px; border-top: 1px dashed #999; font-size: 14px; }
+.row { display: flex; justify-content: space-between; }
+.row.sneak { color: #b00; }
+.row.total { font-weight: 700; border-top: 1px solid #ccc; margin-top: 4px; padding-top: 4px; }
+.okline.bad { color: #b00; }
+.flags { list-style: none; margin: 0; padding: 0; }
+.flag { display: flex; gap: 8px; margin-bottom: 6px; padding: 6px 8px; border: 1px solid #ccc; font-size: 13px; }
+.flag[data-severity="red"] { border-color: #b00; }
+.flag[data-severity="amber"] { border-color: #c80; }
+.flag b, .basis { display: block; }
+.receipt { margin-top: 10px; padding: 10px; border: 1px solid #080; }
+.stamp { margin: 0; font: 700 13px monospace; color: #080; }
+.receipt pre { font-size: 11.5px; white-space: pre-wrap; }
+.fullsig code { word-break: break-all; }
+.siglabel { font-size: 11px; font-style: italic; color: #666; }
+.dispute { font-size: 12.5px; }
+@media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
