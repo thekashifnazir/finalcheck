@@ -232,6 +232,7 @@ async function main() {
   //    what-it-is 0–4 · problem 4–14 · mandate 14–19 · unguarded 19–30 · guard 30–38 · approve 38–44 · close 44–47
   // "So I set a mandate…" — type during the problem line so the card lands as it's named
   await at(10.5);
+  await page.locator("#intent").fill(""); // start from an empty box so the typed intent reads cleanly
   await type(page.locator("#intent"), "Gift for my mum — under £40, no subscriptions", 250);
   await click(page.locator("#btn-mandate"), 500, "arm the mandate");
   await page.locator("#mandate-card.on").waitFor();
