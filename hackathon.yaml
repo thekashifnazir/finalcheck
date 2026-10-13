@@ -1,0 +1,83 @@
+event:
+  name: "SGN × LSE Generate Fintech Hackathon"
+  date: 2026-10-13
+  timezone: Europe/London
+  track: "Fraud and Security"
+
+project:
+  name: "FinalCheck"
+  tagline: "The last checkpoint before an AI agent spends your money"
+  hook: "Agent payments shipped this year — but when the agent buys wrong, there is no dispute code for it"
+  result: "1 cart checked, 3 violations caught, £0 moved without a signature"
+  icon: "shield-check"
+  brand_color: "#0d9488"
+  logo: ""
+
+team:
+  name: ""
+  members: ["Kash"]
+
+deadlines:
+  video_freeze: "20:30"
+  code_freeze: "20:30"
+
+repo:
+  url: ""
+  must_be_public: true
+  license: MIT
+
+judging:
+  - criterion: Real-world impact
+    weight: 30
+  - criterion: Originality
+    weight: 25
+  - criterion: Execution and craft
+    weight: 25
+  - criterion: Trust and responsibility
+    weight: 20
+
+readme_sections:
+  - What we built
+  - Operational problem
+  - Architecture
+  - How to run
+  - Models, APIs and external services
+  - Assumptions
+  - Known limitations
+  - What we'd build next
+
+video:
+  max_seconds: 60
+  target_seconds: 55
+  path: demo/demo.mp4
+  must_be_in_repo: false
+  use_lfs: false
+  mode: ui
+  renderer: hyperframes
+  music: ""
+  voiceover: kokoro
+  captions: true
+  caption_band: true
+  caption_highlight: false
+  voice_id: ""
+  max_speedup: 2.0
+  width: 1920
+  height: 1080
+
+results:
+  enabled: false
+
+social:
+  required: []
+  must_link_repo: false
+
+submission_fields:
+  - repo_url
+  - team_name
+  - track
+  - members
+  - video_path
+
+preflight:
+  judge_phrases_extra: []
+  judge_scan_exclude: []

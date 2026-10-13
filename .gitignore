@@ -1,0 +1,14 @@
+# secrets — never committed (hackathon-kit)
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+secrets/
+# kit build scratch
+demo/build/
+demo/raw/ui/
+.dev.vars
+.wrangler/
+node_modules/
+.env
