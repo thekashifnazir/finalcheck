@@ -169,6 +169,24 @@ function onRun() {
   setState('AGENT_SHOPPING');
 }
 
+// POST /api/sign is best-effort: a 404, timeout or bad body returns null and the client flow
+// carries on exactly as without it. 409 {ok:false, verdict} = refused; 200 {ok:true, receipt, order_id}.
+async function postSign(cart) {
+  try {
+    const res = await fetch('/api/sign', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ mandate, cart, region: 'uk', agent: 'console' }),
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!(res.headers.get('content-type') || '').includes('json')) return null;
+    return { status: res.status, body: await res.json() };
+  } catch (e) {
+    console.warn('[finalcheck] /api/sign unavailable:', e.message);
+    return null;
+  }
+}
+
 // 3 — FinalCheck runs every rule against the signed mandate.
 function onGuard() {
   if (state !== 'AGENT_SHOPPING') return;
@@ -197,6 +215,13 @@ function onGuard() {
   $('btn-guard').disabled = true;
   setPill(`${k} VIOLATION${k === 1 ? '' : 'S'} BLOCKED`, k ? 'fired' : 'armed');
   setState('VIOLATIONS');
+  // Log the refusal server-side too; the on-screen verdict never waits for it.
+  postSign(data.runs.guard_off.cart).then((r) => {
+    if (r?.status === 409 && r.body?.ok === false) {
+      $('verdict').dataset.server = 'refused';
+      $('vmeta').textContent += ' · refusal logged';
+    }
+  });
 }
 
 // 4 — rejected cart goes back; the agent rebuilds and FinalCheck re-checks.
@@ -226,33 +251,49 @@ async function onApprove() {
   const cart = data.runs.rebuild.cart;
   const listing = data.listings.find((l) => l.id === cart.items[0]?.listing_id) ?? null;
   try {
-    const receipt = await buildReceipt(mandate, cart, fixVerdict, data.policy, listing);
-    window.__receipt = receipt;
-    const flags = [mandate.category, `≤${gbpShort(Number(mandate.max_amount))}`, mandate.one_off ? 'one-off' : 'recurring ok'];
-    const items = receipt.cart_mandate.items.map((i) => `${i.name} ${i.price}`).join(', ');
-    $('receipt-pre').textContent = [
-      '{',
-      `  "mandate": "${flags.join(' · ')}",`,
-      `  "cart":    "${items}",`,
-      `  "checked": "${receipt.checks.rules} rules · ${receipt.checks.violations} violations",`,
-      `  "intent":  "${shortHash(receipt.intent_mandate.hash)}",`,
-      `  "sig":     "${shortHash(receipt.sig.value)}",`,
-      `  "expires": "${expiryLabel(receipt.expires)}"`,
-      '}',
-    ].join('\n');
-    $('sig-full').textContent = hex0x(receipt.sig.value);
-    const rb = data.policy?.receipt;
-    $('receipt-basis').textContent = rb ? `basis: ${rb.basis} · ${rb.ref}` : '';
-    $('receipt').classList.add('on');
-    $('receipt').dataset.state = 'signed';
-    setPill(`SIGNED · ${receipt.cart_mandate.total} RELEASED`, 'signed');
+    const pending = postSign(cart); // in flight while the client receipt renders
+    renderReceipt(await buildReceipt(mandate, cart, fixVerdict, data.policy, listing));
+    setPill(`SIGNED · ${window.__receipt.cart_mandate.total} RELEASED`, 'signed');
     setState('SIGNED');
+    const r = await pending;
+    if (r?.body?.ok === true && r.body.receipt?.sig?.value) {
+      const client = window.__receipt;
+      try {
+        renderReceipt(r.body.receipt, r.body.order_id);
+        $('receipt').dataset.source = 'server';
+      } catch (e) {
+        console.warn('[finalcheck] server receipt unreadable, keeping client receipt:', e.message);
+        renderReceipt(client);
+      }
+    }
   } catch (e) {
     console.error('[finalcheck] receipt failed:', e);
     btn.disabled = false;
     $('okline').textContent = '✗ could not build the receipt — ' + e.message;
     $('okline').classList.add('bad');
   }
+}
+
+function renderReceipt(receipt, orderId = null) {
+  window.__receipt = orderId ? { ...receipt, order_id: orderId } : receipt;
+  const flags = [mandate.category, `≤${gbpShort(Number(mandate.max_amount))}`, mandate.one_off ? 'one-off' : 'recurring ok'];
+  const items = receipt.cart_mandate.items.map((i) => `${i.name} ${i.price}`).join(', ');
+  $('receipt-pre').textContent = [
+    '{',
+    `  "mandate": "${flags.join(' · ')}",`,
+    `  "cart":    "${items}",`,
+    `  "checked": "${receipt.checks.rules} rules · ${receipt.checks.violations} violations",`,
+    `  "intent":  "${shortHash(receipt.intent_mandate.hash)}",`,
+    `  "sig":     "${shortHash(receipt.sig.value)}",`,
+    `  "expires": "${expiryLabel(receipt.expires)}"` + (orderId ? ',' : ''),
+    ...(orderId ? [`  "order":   "${orderId}"`] : []),
+    '}',
+  ].join('\n');
+  $('sig-full').textContent = hex0x(receipt.sig.value);
+  const rb = data.policy?.receipt;
+  $('receipt-basis').textContent = rb ? `basis: ${rb.basis} · ${rb.ref}` : '';
+  $('receipt').classList.add('on');
+  $('receipt').dataset.state = 'signed';
 }
 
 async function onCopy() {
