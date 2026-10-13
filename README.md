@@ -17,12 +17,20 @@ Before any cart is paid, a rules engine checks the agent's cart against that man
 with the reason and the regulation behind it. A compliant cart gets a hashed **intent receipt**,
 which is the evidence for a dispute (there is no chargeback reason code for "my AI agent did it").
 
-Two screens, one engine:
-- **Ops console** (`/ops/`): the five-stage walkthrough. Mandate → agent shops with the guard off
-  (it gets prompt-injected by hidden text on a listing and adds a £4.99/mo subscription) → guard on:
-  3 violations blocked, hidden text revealed → agent rebuilds a compliant cart → approve and sign.
-- **Consumer view** (`/`): plain-English protection status (UK or Singapore pack), set, revoke or
-  skip a mandate, and a feed of what your agent did.
+Console for humans, tools for agents, one engine:
+- **Consumer view** (`/`): plain-English protection status (UK or Singapore pack). A short
+  conversation builds the mandate: you say what you want, and it asks only for what you left out
+  (price, renewals, purpose, end date). You can revoke the mandate, or skip it and keep baseline
+  protection. A feed shows what your agent did, in sentences.
+- **Ops console** (`/ops/`): three scenarios, walked through stage by stage.
+  **A** hidden instruction + upsell: prompt-injected listing, £4.99/mo add-on, over budget.
+  **B** lookalike merchant + drip fee: a shop 2 characters off the real domain, a fee that appears
+  only at checkout, card details pasted into a gift message.
+  **C** coerced gift-card purchase: "Mum texted from a new number". FinalCheck halts, nothing is
+  paid, and a refusal record is kept.
+- **Agent tools** (`/mcp`): a remote MCP server. An agent like Claude lists products, sets or asks
+  for a mandate, checks a cart, and pays only through `sign_receipt`. If there's no mandate, the agent
+  is told to ask the person once: set one, or continue with baseline protection.
 
 ## Operational problem
 
@@ -38,11 +46,15 @@ reimbursement claims are rejected, so the person needs evidence of what they act
 plain-English intent ──► /api/parse ──► Claude (optional) ─┐
                          keyword ruleset (always) ─────────┴─► mergeMandate: the LLM may only TIGHTEN
 agent cart ──► rules.check(mandate | null, cart, listings, now, policyPack)
-                 ├─ mandate rules: OVER_BUDGET, CATEGORY_MISMATCH, EXPIRED
-                 └─ baseline rules: UNDISCLOSED_RECURRING, INJECTED_INSTRUCTION
+                 ├─ mandate rules (4): OVER_BUDGET, CATEGORY_MISMATCH, EXPIRED, QUANTITY_ANOMALY
+                 └─ baseline rules (9): UNDISCLOSED_RECURRING, INJECTED_INSTRUCTION, RESTRICTED_CATEGORY,
+                    MERCHANT_UNVERIFIED, PRICE_DRIFT, FIRST_TIME_PAYEE, PRESSURE_CUE, DATA_EXFIL,
+                    CURRENCY_MISMATCH  (these run even with no mandate)
             ──► verdict {violations + basis/ref from the policy pack}
-            ──► receipt.buildReceipt → canonical JSON → SHA-256 → intent receipt
+            ──► receipt.buildReceipt → canonical JSON → Ed25519 signature → intent receipt
 ```
+- `/api/sign` and the MCP `sign_receipt` tool **re-run the check on the server**, rebuilding the cart
+  from listing IDs, so a client can't lie about prices or skip the verdict.
 - Cloudflare Worker (`app/worker/`) serves static assets and `/api/*`; KV stores prefs and events.
 - The engine (`app/public/lib/`) is plain ES modules shared by the browser, the Worker and the tests.
 - Policy packs (`app/public/policies/uk.json`, `sg.json`) are data: each rule's basis and reference
@@ -66,7 +78,9 @@ Fully offline: `npm run static` serves the pages without the Worker (client-side
 - **Anthropic Messages API**: Claude (`claude-haiku-5-5` by default, `APP_LLM_MODEL` overrides) for
   one intent-parse call per mandate. Optional. OpenAI `gpt-4.1-mini` is used only if no Anthropic key is set.
 - **Cloudflare Workers + Workers KV**: hosting, API and demo state.
-- Web Crypto `SHA-256` (built in) for receipt hashing. No payment APIs are called.
+- Web Crypto (built in): SHA-256 and Ed25519 for receipt signing; `GET /api/keys` publishes the
+  public key and `POST /api/verify` checks a receipt. No payment APIs are called.
+- Model Context Protocol (Streamable HTTP, hand-rolled JSON-RPC) for the agent tools.
 
 ## Assumptions
 
@@ -79,18 +93,23 @@ Fully offline: `npm run static` serves the pages without the Worker (client-side
 
 - **Demo data.** The agent run is scripted, the four listings and merchants are fictional, and
   the payment rail is mocked: no real money moves. The UI says so in a banner.
-- The receipt "signature" is a SHA-256 hash of the canonical receipt JSON, not a key signature.
-- Only 5 rules are implemented. The policy packs list more baseline codes (gift cards, lookalike
-  merchants, drip pricing, first-time payee…) that the engine doesn't run yet; it skips codes it doesn't know.
-- Injection detection is a keyword match on hidden text. It catches the demo case, not paraphrased attacks.
-- Single demo user; prefs and events are shared by everyone using the deployed URL.
-- The consumer view keeps the active mandate in the browser (labelled on screen).
+- Receipts are Ed25519-signed only when a signing key is configured. Without one they carry a SHA-256
+  hash, and the receipt says so. There is one demo key, with no rotation or revocation.
+- The fraud rules are deliberately simple: injection detection is a keyword match on hidden text,
+  lookalike detection is edit distance against a short verified-merchant list, and pressure cues
+  are phrase matches. They catch the scripted scenarios, not a determined attacker.
+- Single demo user. Prefs, the standing mandate and events are shared by everyone using the
+  deployed URL, and KV writes can race under concurrent use.
+- Agent identity is a label ("mcp"/"console"), not a per-agent credential.
+- The mandate conversation understands caps, renewals, gift/anything, weekdays, "tonight" and
+  "in N days". Anything else gets a hint and the question is asked again.
 
 ## What we'd build next
 
-- An MCP tool server so any agent pays only through FinalCheck (the engine is already UI-free).
-- Real key signatures (Ed25519) on receipts, verifiable by a merchant or bank.
-- The remaining baseline fraud rules, and recurring-charge monitoring with one-tap revocation.
+- Per-agent credentials and signed mandate tokens, so a merchant can verify which agent acted
+  under which mandate.
+- Recurring-charge monitoring with one-tap revocation.
+- Stronger detectors behind the same rule codes (model-based injection and pressure classifiers).
 - A virtual-card issuer behind the verdict, so a block stops the money, not just the agent.
 - Dispute filing that attaches the receipt automatically.
 
