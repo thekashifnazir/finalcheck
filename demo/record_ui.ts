@@ -238,6 +238,7 @@ async function main() {
   // "…nothing checks the agent before the money moves." → the checkpoint itself
   await at(15.0);
   await go(appUrl, 600);
+  await highlight(page.locator("#howto"), 1600, { zoom: false, label: "Back end: the ops console — what FinalCheck checks behind the scenes" });
 
   // 2. "FinalCheck turns her words into a mandate…"
   await page.locator("#intent").fill(""); // start from an empty box so the typed intent reads cleanly
