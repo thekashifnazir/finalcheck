@@ -3,6 +3,7 @@
 // The server is the authority: signing rebuilds the cart from the fixtures and re-runs check().
 // The sign path here is shared with the MCP tools (worker/mcp.js).
 import listings from '../public/fixtures/listings.json' with { type: 'json' };
+import { aiParse } from './llm.js';
 import uk from '../public/policies/uk.json' with { type: 'json' };
 import sg from '../public/policies/sg.json' with { type: 'json' };
 import trust from '../public/fixtures/trust.json' with { type: 'json' };
@@ -101,12 +102,12 @@ export async function signingKey(env) {
 }
 
 // ---- standing mandate (set by the user or an agent; one per demo user) ----
-export async function setMandateFromText(store, text, agent) {
+export async function setMandateFromText(store, text, agent, env = {}) {
   if (typeof text !== 'string' || !text.trim()) throw new BadRequest('text is required');
   if (text.length > 500) throw new BadRequest('text must be 500 characters or fewer');
   let mandate;
   try {
-    mandate = validateMandate(parseIntent(text, new Date()));
+    mandate = validateMandate((await aiParse(env, text)).mandate);
   } catch (e) {
     throw new BadRequest(e.message);
   }
@@ -210,7 +211,7 @@ export async function handleConsole(request, env, url) {
       }
       case 'POST /api/mandate': {
         const { text } = await readJSON(request);
-        return json({ mandate: await setMandateFromText(store, text, 'user') });
+        return json({ mandate: await setMandateFromText(store, text, 'user', env) });
       }
       case 'POST /api/mandate/revoke':
         return json({ ok: true, mandate: await store.setMandateStatus('revoked') });

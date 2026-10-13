@@ -174,7 +174,7 @@ async function callTool(name, args, env, store) {
       return { id: p.id, label: p.label, region: p.region, currency: p.currency, baseline: p.baseline_summary, baseline_rules: p.baseline_rules, mandate_rules: p.mandate_rules };
     }
     case 'set_mandate': {
-      const rec = await setMandateFromText(store, args.text, AGENT);
+      const rec = await setMandateFromText(store, args.text, AGENT, env);
       return { ok: true, mandate_id: rec.id, mandate: rec.mandate, chips: mandateChips(rec.mandate) };
     }
     case 'get_mandate': {
