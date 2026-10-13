@@ -26,7 +26,7 @@ const REASONS = {
   EXPIRED: 'your mandate had expired',
 };
 
-const state = { prefs: { ...DEFAULT_PREFS }, policy: null, policies: {} };
+const state = { prefs: { ...DEFAULT_PREFS }, policy: null, policies: {}, mandateSource: null, record: null };
 
 // ---- storage (may be blocked in private windows) ----
 function readLocal(key) {
@@ -102,11 +102,46 @@ function mandateSummary(m) {
   return `Up to ${money(m.max_amount, m.currency)} · ${scope} · ${kind} · until ${until}`;
 }
 
+// Where the mandate lives: the FinalCheck service when it answers (so an agent's
+// mandate shows here and Revoke stops the agent), else this device (static demo).
+async function loadMandate() {
+  try {
+    const { mandate: rec } = await api('/api/mandate');
+    state.mandateSource = 'service';
+    state.record = rec ?? null;
+  } catch {
+    state.mandateSource = 'device';
+    const m = readLocal(KEY_MANDATE);
+    state.record = m ? { mandate: m } : null;
+  }
+}
+
+// Poll refresh: keep the last known state if the service blips.
+async function refreshServiceMandate() {
+  if (state.mandateSource !== 'service') return;
+  try {
+    const { mandate: rec } = await api('/api/mandate');
+    if ((rec?.id ?? null) !== (state.record?.id ?? null)) {
+      state.record = rec ?? null;
+      renderMandate();
+    }
+  } catch { /* keep showing what we had */ }
+}
+
+function mandateNote(rec) {
+  if (state.mandateSource !== 'service') return 'Saved on this device (demo).';
+  const who = rec.agent === 'mcp' ? 'Set by your agent' : 'Saved';
+  return `${who} · your agent spends against this until you revoke it.`;
+}
+
 function renderMandate() {
-  const m = readLocal(KEY_MANDATE);
-  $('c-mandate-active').hidden = !m;
-  $('c-mandate-form').hidden = Boolean(m);
-  if (m) $('c-mandate-summary').textContent = mandateSummary(m);
+  const rec = state.record;
+  $('c-mandate-active').hidden = !rec;
+  $('c-mandate-form').hidden = Boolean(rec);
+  if (rec) {
+    $('c-mandate-summary').textContent = mandateSummary(rec.mandate);
+    $('c-mandate-note').textContent = mandateNote(rec);
+  }
   $('c-ask-toggle').checked = state.prefs.mandate_choice !== 'baseline';
   $('c-skip-confirm').hidden = state.prefs.mandate_choice !== 'baseline';
 }
@@ -132,7 +167,16 @@ async function onSetMandate() {
   if (!text) { err.textContent = 'Tell us what your agent may buy, e.g. “a gift under £40”.'; return; }
   $('c-set-mandate').disabled = true;
   try {
-    writeLocal(KEY_MANDATE, await parseMandate(text));
+    if (state.mandateSource === 'service') {
+      // Same ruleset as the server, checked here first so a missing cap is explained
+      // without a failed request.
+      validateMandate(parseIntent(text, new Date(), { currency: state.policy.currency }));
+      state.record = (await postJSON('/api/mandate', { text })).mandate;
+    } else {
+      const m = await parseMandate(text);
+      writeLocal(KEY_MANDATE, m);
+      state.record = { mandate: m };
+    }
     renderMandate();
   } catch (e) {
     err.textContent = `Couldn't set that mandate: ${e.message}`;
@@ -141,9 +185,15 @@ async function onSetMandate() {
   }
 }
 
-function onRevoke() {
-  writeLocal(KEY_MANDATE, null);
-  renderMandate();
+async function onRevoke() {
+  try {
+    if (state.mandateSource === 'service') await postJSON('/api/mandate/revoke', {});
+    else writeLocal(KEY_MANDATE, null);
+    state.record = null;
+    renderMandate();
+  } catch (e) {
+    $('c-mandate-error').textContent = `Couldn't revoke: ${e.message}`;
+  }
 }
 
 async function onSkip() {
@@ -202,7 +252,9 @@ async function refreshActivity() {
       return li;
     }));
     status.textContent = rows.length ? '' : "Nothing yet — your agent hasn't tried to buy anything.";
+    $('c-agent-hint').hidden = !events.some((ev) => ev.agent === 'mcp');
     if (!feedTimer) feedTimer = setInterval(refreshActivity, 5000);
+    await refreshServiceMandate();
   } catch {
     feedFailures += 1;
     if (feedFailures >= 2 && feedTimer) { clearInterval(feedTimer); feedTimer = null; }
@@ -214,6 +266,7 @@ async function refreshActivity() {
 async function boot() {
   state.prefs = await loadPrefs();
   await renderProtection();
+  await loadMandate();
   renderMandate();
   $('c-region').addEventListener('change', onRegion);
   $('c-set-mandate').addEventListener('click', onSetMandate);
