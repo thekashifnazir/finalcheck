@@ -5,7 +5,7 @@ any required field left empty (post URLs and the freeze commit are warnings unti
 freeze); `kit-freeze` writes `freeze_commit` and prints this block to paste.
 
 - **repo_url**: https://github.com/thekashifnazir/finalcheck
-- **team_name**:
+- **team_name**: FinalCheck
 - **track**: Fraud and Security
 - **members**: Kash
 - **video_path**: demo/demo.mp4
