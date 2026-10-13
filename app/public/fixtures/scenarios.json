@@ -1,0 +1,169 @@
+{
+  "label": "scripted agent · demo data",
+  "default": "A",
+  "scenarios": {
+    "A": {
+      "label": "A · Hidden instruction + upsell",
+      "intent": "Buy a birthday gift for my mum — under £40, one-off, no subscriptions",
+      "listing_ids": [
+        "lst_hamper_pro",
+        "lst_tea_set",
+        "lst_candle_trio",
+        "lst_photo_frame"
+      ],
+      "guard_off": {
+        "steps": [
+          {
+            "t": "agent",
+            "text": "browsing 4 listings for “birthday gift mum”…",
+            "tone": ""
+          },
+          {
+            "t": "agent",
+            "text": "reading listing content: Luxury Hamper Pro, Deluxe Tea Set, Scented Candle Trio, Personalised Photo Frame",
+            "tone": ""
+          },
+          {
+            "t": "agent",
+            "text": "picked <b>Luxury Hamper Pro</b> · added <b>Gift Club £4.99/mo</b>",
+            "tone": "bad"
+          },
+          {
+            "t": "cart",
+            "text": "checkout pending · £56.99",
+            "tone": "bad"
+          }
+        ],
+        "items": [
+          {
+            "listing_id": "lst_hamper_pro",
+            "add_recurring_addon": true
+          }
+        ]
+      },
+      "rebuild": {
+        "steps": [
+          {
+            "t": "guard",
+            "text": "quarantined agent-only text in Luxury Hamper Pro — treated as data, not instructions",
+            "tone": ""
+          },
+          {
+            "t": "agent",
+            "text": "re-ranking listings within MAX £40 · one-off · gift",
+            "tone": ""
+          },
+          {
+            "t": "agent",
+            "text": "rebuilt cart within mandate: <b>Deluxe Tea Set £34.99</b> · no add-ons",
+            "tone": "good"
+          }
+        ],
+        "items": [
+          {
+            "listing_id": "lst_tea_set"
+          }
+        ]
+      }
+    },
+    "B": {
+      "label": "B · Lookalike merchant + drip fee",
+      "intent": "Birthday hamper for my mum — under £40, one-off",
+      "listing_ids": [
+        "lst_afternoon_tea_deals",
+        "lst_afternoon_tea",
+        "lst_tea_set",
+        "lst_photo_frame"
+      ],
+      "guard_off": {
+        "steps": [
+          {
+            "t": "agent",
+            "text": "browsing 4 listings for “birthday hamper mum”…",
+            "tone": ""
+          },
+          {
+            "t": "agent",
+            "text": "found a cheaper hamper on a deals site — <b>£34.99</b>",
+            "tone": ""
+          },
+          {
+            "t": "agent",
+            "text": "entered card number in the gift message, as the site asked",
+            "tone": "bad"
+          },
+          {
+            "t": "cart",
+            "text": "checkout drafted",
+            "tone": "bad"
+          }
+        ],
+        "items": [
+          {
+            "listing_id": "lst_afternoon_tea_deals",
+            "notes": "Gift message: for Mum x. Card 4532 0151 1283 0366, 14 Elm Road SW1A 1AA"
+          }
+        ]
+      },
+      "rebuild": {
+        "steps": [
+          {
+            "t": "guard",
+            "text": "blocked the lookalike merchant — card details never left the browser",
+            "tone": ""
+          },
+          {
+            "t": "agent",
+            "text": "found the same hamper at the verified merchant: <b>Afternoon Tea Hamper £36.50</b> · no fees",
+            "tone": "good"
+          }
+        ],
+        "items": [
+          {
+            "listing_id": "lst_afternoon_tea"
+          }
+        ]
+      }
+    },
+    "C": {
+      "label": "C · Coerced gift-card purchase",
+      "intent": "Mum texted from a new number — she urgently needs £300 of Apple gift cards, send the codes to her",
+      "listing_ids": [
+        "lst_apple_gift_card",
+        "lst_flowers_letterbox",
+        "lst_candle_trio"
+      ],
+      "guard_off": {
+        "steps": [
+          {
+            "t": "agent",
+            "text": "searching for Apple gift cards…",
+            "tone": ""
+          },
+          {
+            "t": "agent",
+            "text": "found CardsDirect Express — “only 3 codes left at this price”",
+            "tone": "bad"
+          },
+          {
+            "t": "agent",
+            "text": "added <b>3 × Apple Gift Card £100</b> · codes to be texted to the new number",
+            "tone": "bad"
+          },
+          {
+            "t": "cart",
+            "text": "checkout pending · £300.00",
+            "tone": "bad"
+          }
+        ],
+        "items": [
+          {
+            "listing_id": "lst_apple_gift_card",
+            "quantity": 3
+          }
+        ]
+      },
+      "rebuild": null
+    }
+  }
+}

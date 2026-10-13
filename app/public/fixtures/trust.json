@@ -1,0 +1,26 @@
+{
+  "verified_merchants": [
+    {
+      "name": "Hamper & Hearth",
+      "domain": "hamperandhearth.co.uk"
+    },
+    {
+      "name": "Kettle Lane Tea Co.",
+      "domain": "kettlelanetea.co.uk"
+    },
+    {
+      "name": "Wick & Willow",
+      "domain": "wickandwillow.co.uk"
+    },
+    {
+      "name": "Oakhurst Keepsakes",
+      "domain": "oakhurstkeepsakes.co.uk"
+    }
+  ],
+  "known_payees": [
+    "HAMPER & HEARTH LTD",
+    "KETTLE LANE TEA CO LTD",
+    "WICK & WILLOW LTD",
+    "OAKHURST KEEPSAKES LTD"
+  ]
+}
