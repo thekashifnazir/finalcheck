@@ -153,12 +153,16 @@ try {
     ok('B: lookalike detail', (await page.textContent('#flags')).includes('2 characters off verified'), null);
     ok('B: card number redacted', !/4532 0151 1283 0366/.test(await page.textContent('body')) && (await page.textContent('#flags')).includes('4532…0366'), null);
     ok('B: no injection box revealed', (await page.locator('.hidden-inj.on').count()) === 0, null);
+    const logged = () => page.waitForFunction(() => document.getElementById('verdict').dataset.server === 'refused', null, { timeout: 6000 }).then(() => true, () => false);
+    ok('B: server refusal logged', await logged(), await page.textContent('#vmeta'));
     ok('B: #vmeta 13 rules', (await page.textContent('#vmeta')).startsWith('13 rules checked · 5 violations'), await page.textContent('#vmeta'));
     await page.click('#btn-fix');
     ok('B: rebuild 0 violations', (await page.textContent('#okline')).includes('0 violations'), await page.textContent('#okline'));
     await page.click('#btn-approve');
     await page.waitForSelector('#receipt.on');
     ok('B: signed £36.50', (await page.textContent('#status-pill')) === 'SIGNED · £36.50 RELEASED', await page.textContent('#status-pill'));
+    const bServer = await page.waitForFunction(() => document.getElementById('receipt').dataset.source === 'server', null, { timeout: 6000 }).then(() => true, () => false);
+    ok('B: server receipt with order id', bServer && /"order":\s+"ord_/.test(await page.textContent('#receipt-pre')), await page.textContent('#receipt-pre'));
     await shot('B-signed');
   }
 
@@ -171,6 +175,8 @@ try {
     await page.click('#btn-guard');
     const c = await codes2();
     ok('C: exactly 4 flags', JSON.stringify(c) === JSON.stringify(['RESTRICTED_CATEGORY', 'FIRST_TIME_PAYEE', 'PRESSURE_CUE', 'QUANTITY_ANOMALY']), c);
+    const cLogged = await page.waitForFunction(() => document.getElementById('verdict').dataset.server === 'refused', null, { timeout: 6000 }).then(() => true, () => false);
+    ok('C: server refusal logged', cLogged, await page.textContent('#vmeta'));
     ok('C: pill 4 VIOLATIONS BLOCKED', (await page.textContent('#status-pill')) === '4 VIOLATIONS BLOCKED', await page.textContent('#status-pill'));
     await page.click('#btn-fix');
     ok('C: halt offered, approve hidden', (await page.locator('#btn-halt').isVisible()) && !(await page.locator('#btn-approve').isVisible()), null);

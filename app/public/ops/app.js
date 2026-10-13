@@ -55,8 +55,8 @@ const scn = () => data.scenarios[scenarioKey];
 const guardCart = () => buildCart(scn().guard_off.items, data.byId);
 const rebuildCart = () => (scn().rebuild ? buildCart(scn().rebuild.items, data.byId) : null);
 const runCheck = (cart) => check(mandate, cart, data.listings, new Date(), data.policy, data.trust);
-// /api/sign rebuilds carts from listing_id only (no quantity/notes/fees yet), so B/C stay client-side.
-const serverSigns = () => scenarioKey === 'A';
+// /api/sign rebuilds every scenario's cart server-side (shared buildCart: quantity, notes, fees).
+const serverSigns = () => true;
 
 // Steps come from our own fixtures (agent_runs.json) and carry <b> markup, so innerHTML is
 // acceptable here. Merchant-supplied listing text below always goes through textContent.
