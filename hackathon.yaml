@@ -47,8 +47,8 @@ readme_sections:
   - What we'd build next
 
 video:
-  max_seconds: 60
-  target_seconds: 55
+  max_seconds: 90
+  target_seconds: 85
   path: demo/demo.mp4
   must_be_in_repo: false
   use_lfs: false
