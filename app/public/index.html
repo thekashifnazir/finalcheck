@@ -4,46 +4,49 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>FinalCheck</title>
-<link rel="icon" href="data:,">
-<!-- Deliberately plain: the design team restyles this page against the c- ids. -->
-<style>body { max-width: 720px; margin: 0 auto; padding: 0 16px; font-family: system-ui, sans-serif; line-height: 1.5; } .c-default { color: GrayText; }</style>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 2 4 6v9c0 7.5 5.1 13.4 12 15 6.9-1.6 12-7.5 12-15V6z' fill='%23062B62'/%3E%3Cpath d='m10 16 4.5 4.5L23 12' fill='none' stroke='%232FC69B' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/consumer.css">
 <script type="module" src="/consumer.js"></script>
 </head>
 <body>
 <p id="c-banner">Demo: nothing here moves real money. <span id="c-pack">Policy pack: loading…</span></p>
 
 <header id="c-header">
-  <h1>FinalCheck</h1>
-  <p id="c-tagline">Your AI agent can shop. It can't overspend, get scammed, or sign you up to things.</p>
-  <p><a id="c-ops-link" href="/ops/">ops view →</a></p>
+  <div class="c-brand">
+    <img id="c-logo" src="/logo.png" alt="" height="40">
+    <h1 class="c-sr">FinalCheck</h1>
+    <a id="c-ops-link" href="/ops/">ops view →</a>
+  </div>
+  <p id="c-tagline">Your AI Agent. Our Fraud Protection.</p>
+  <p class="c-explainer">Your AI agent can shop. It can't overspend, get scammed, or sign you up to things.</p>
 </header>
 
 <main>
   <p id="c-boot-error" role="alert"></p>
 
-  <section id="c-protection" aria-labelledby="c-protection-status">
+  <section id="c-protection" class="c-card" aria-labelledby="c-protection-status">
     <h2 id="c-protection-status">Protected</h2>
-    <label for="c-region">Region</label>
+    <p class="c-region-row"><label for="c-region">Region</label>
     <select id="c-region">
       <option value="uk">United Kingdom</option>
       <option value="sg">Singapore</option>
-    </select>
+    </select></p>
     <ul id="c-bullets"></ul>
     <p id="c-protection-note">These apply to every purchase, even without a mandate.</p>
-    <p id="c-pause-row">
+    <p id="c-pause-row" class="c-toggle-row">
       <input id="c-pause" type="checkbox">
       <label for="c-pause">Pause my agent — block every purchase until I resume</label>
     </p>
     <p id="c-pause-note"></p>
   </section>
 
-  <section id="c-mandate" aria-labelledby="c-mandate-heading">
+  <section id="c-mandate" class="c-card" aria-labelledby="c-mandate-heading">
     <h2 id="c-mandate-heading">Spending mandate</h2>
 
     <div id="c-mandate-active" hidden>
       <p id="c-mandate-summary"></p>
       <p id="c-mandate-note"></p>
-      <button id="c-revoke" type="button">Revoke</button>
+      <button id="c-revoke" type="button" class="c-danger">Revoke</button>
     </div>
 
     <div id="c-mandate-form">
@@ -51,7 +54,7 @@
         <ol id="c-chat-log" aria-live="polite"></ol>
         <div id="c-chat-replies"></div>
         <form id="c-chat-form">
-          <label for="c-chat-input">Your answer</label>
+          <label for="c-chat-input" class="c-sr">Your answer</label>
           <input id="c-chat-input" type="text" maxlength="300" size="50" autocomplete="off" placeholder="e.g. buy mum a birthday present">
           <button id="c-chat-send" type="submit">Send</button>
         </form>
@@ -62,22 +65,22 @@
         <ul id="c-chat-rows"></ul>
         <p id="c-chat-actions" hidden>
           <button id="c-save-mandate" type="button">Save mandate</button>
-          <button id="c-edit-mandate" type="button">Edit</button>
+          <button id="c-edit-mandate" type="button" class="c-ghost">Edit</button>
         </p>
       </section>
 
-      <p><button id="c-skip" type="button">Skip — baseline only</button></p>
+      <p class="c-skip-row"><button id="c-skip" type="button" class="c-ghost">Skip — baseline only</button></p>
       <p id="c-mandate-error" role="alert"></p>
       <p id="c-skip-confirm" hidden>Your agent won't be asked again; baseline protection stays on.</p>
     </div>
 
-    <p>
+    <p class="c-toggle-row">
       <input id="c-ask-toggle" type="checkbox" checked>
       <label for="c-ask-toggle">Ask me before each purchase without a mandate</label>
     </p>
   </section>
 
-  <section id="c-activity-section" aria-labelledby="c-activity-heading">
+  <section id="c-activity-section" class="c-card" aria-labelledby="c-activity-heading">
     <h2 id="c-activity-heading">What your agent did</h2>
     <p id="c-agent-hint" hidden>Agent connected via MCP</p>
     <p id="c-activity-status" aria-live="polite"></p>

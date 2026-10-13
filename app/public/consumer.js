@@ -448,10 +448,11 @@ async function refreshActivity() {
     $('c-activity').replaceChildren(...rows.map(([ev, s]) => {
       const li = document.createElement('li');
       li.textContent = s;
+      li.dataset.kind = ev.kind;
       if (ev.at) {
         const t = document.createElement('time');
         t.dateTime = ev.at;
-        t.textContent = ` — ${new Date(ev.at).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })}`;
+        t.textContent = new Date(ev.at).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' }); // its own line (consumer.css)
         li.append(t);
       }
       return li;
