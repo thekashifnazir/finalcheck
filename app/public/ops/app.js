@@ -12,6 +12,10 @@ let state = 'IDLE';
 let data = null;          // { listings, runs, policy }
 let mandate = null;
 let fixVerdict = null;
+let guardVerdict = null;
+let baseline = false;     // mandate === null → only the pack's baseline_rules run
+let region = 'uk';
+const packs = {};         // region → policy pack JSON, fetched on first use
 
 const gbp = (p) => formatPence(p);
 const gbpShort = (pounds) => '£' + (Number.isInteger(pounds) ? pounds : pounds.toFixed(2));
@@ -28,6 +32,8 @@ function setState(next) {
   state = next;
   document.body.dataset.state = next;
   $('btn-run').disabled = !(state === 'MANDATE_ARMED' && data);
+  $('baseline-toggle').disabled = !(state === 'IDLE' || state === 'MANDATE_ARMED');
+  $('pack-select').disabled = state === 'SIGNED' || !data; // the receipt is signed under one pack
 }
 
 function show(id) {
@@ -103,6 +109,7 @@ function renderListings(cart) {
 }
 
 function renderMandate(m, note) {
+  if (baseline) return; // a late /api/parse reply must not re-arm a mandate
   mandate = m;
   $('chips').replaceChildren(...toChips(m).map((c) => el('div', 'chip', c)));
   const by = PARSED_BY[m.parsed_by] || m.parsed_by || 'ruleset';
@@ -170,13 +177,13 @@ function onRun() {
 }
 
 // POST /api/sign is best-effort: a 404, timeout or bad body returns null and the client flow
-// carries on exactly as without it. 409 {ok:false, verdict} = refused; 200 {ok:true, receipt, order_id}.
+// carries on exactly as without it. {ok:false, verdict} = refused; {ok:true, receipt, order_id} = signed.
 async function postSign(cart) {
   try {
     const res = await fetch('/api/sign', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ mandate, cart, region: 'uk', agent: 'console' }),
+      body: JSON.stringify({ mandate, cart, region, agent: 'console' }),
       signal: AbortSignal.timeout(5000),
     });
     if (!(res.headers.get('content-type') || '').includes('json')) return null;
@@ -190,7 +197,25 @@ async function postSign(cart) {
 // 3 — FinalCheck runs every rule against the signed mandate.
 function onGuard() {
   if (state !== 'AGENT_SHOPPING') return;
-  const v = check(mandate, data.runs.guard_off.cart, data.listings, new Date(), data.policy);
+  renderVerdict();
+  document.querySelectorAll('.hidden-inj').forEach((n) => n.classList.add('on'));
+  $('verdict').classList.add('on');
+  $('verdict').dataset.state = 'shown';
+  $('verdict-hint').style.display = 'none';
+  $('btn-guard').disabled = true;
+  setState('VIOLATIONS');
+  // Log the refusal server-side too; the on-screen verdict never waits for it.
+  postSign(data.runs.guard_off.cart).then((r) => {
+    if (r?.body?.ok === false) {
+      $('verdict').dataset.server = 'refused';
+      $('vmeta').textContent += ' · refusal logged';
+    }
+  });
+}
+
+// Re-runnable: a pack switch calls this again so the basis/ref lines change in place.
+function renderVerdict() {
+  const v = guardVerdict = check(mandate, data.runs.guard_off.cart, data.listings, new Date(), data.policy);
   const flags = $('flags');
   flags.replaceChildren();
   for (const f of v.violations) {
@@ -207,40 +232,73 @@ function onGuard() {
   }
   const k = v.violations.length;
   const pack = v.policy_pack || data.policy?.id;
-  $('vmeta').textContent = `${v.rules_checked} rules checked · ${k} violation${k === 1 ? '' : 's'}` + (pack ? ` · policy: ${pack}` : '');
-  document.querySelectorAll('.hidden-inj').forEach((n) => n.classList.add('on'));
-  $('verdict').classList.add('on');
-  $('verdict').dataset.state = 'shown';
-  $('verdict-hint').style.display = 'none';
-  $('btn-guard').disabled = true;
-  setPill(`${k} VIOLATION${k === 1 ? '' : 'S'} BLOCKED`, k ? 'fired' : 'armed');
-  setState('VIOLATIONS');
-  // Log the refusal server-side too; the on-screen verdict never waits for it.
-  postSign(data.runs.guard_off.cart).then((r) => {
-    if (r?.status === 409 && r.body?.ok === false) {
-      $('verdict').dataset.server = 'refused';
-      $('vmeta').textContent += ' · refusal logged';
-    }
-  });
+  $('vmeta').textContent = `${v.rules_checked} rules checked · ${k} violation${k === 1 ? '' : 's'}` + (pack ? ` · policy: ${pack}` : '') + (baseline ? ' · baseline' : '');
+  $('verdict').dataset.mode = v.mode ?? (baseline ? 'baseline' : 'mandate');
+  if (state === 'AGENT_SHOPPING' || state === 'VIOLATIONS') setPill(`${k} VIOLATION${k === 1 ? '' : 'S'} BLOCKED`, k ? 'fired' : 'armed');
 }
 
 // 4 — rejected cart goes back; the agent rebuilds and FinalCheck re-checks.
 function onFix() {
   if (state !== 'VIOLATIONS') return;
   const run = data.runs.rebuild;
-  fixVerdict = check(mandate, run.cart, data.listings, new Date(), data.policy);
   renderSteps($('feed4'), run.steps);
   renderCart($('cart2'), run.cart, 'Checkout');
+  show('stage4');
+  $('btn-fix').disabled = true;
+  setState('CART_COMPLIANT');
+  renderRecheck();
+}
+
+function renderRecheck() {
+  fixVerdict = check(mandate, data.runs.rebuild.cart, data.listings, new Date(), data.policy);
   const n = fixVerdict.violations.length;
   const pack = fixVerdict.policy_pack || data.policy?.id;
   const ok = $('okline');
   ok.textContent = `${n ? '✗' : '✓'} re-checked: ${n} violation${n === 1 ? '' : 's'} · ${fixVerdict.rules_checked} rules` + (pack ? ` · policy ${pack}` : '');
   ok.classList.toggle('bad', n > 0);
   $('btn-approve').disabled = n > 0;
-  show('stage4');
-  $('btn-fix').disabled = true;
   setPill(n ? `${n} VIOLATIONS BLOCKED` : 'CART COMPLIANT', n ? 'fired' : 'armed');
-  setState('CART_COMPLIANT');
+}
+
+// Baseline demo: no mandate at all — the pack's baseline_rules still catch the recurring charge
+// and the injected text, but there is no cap, so no OVER_BUDGET.
+function onBaselineToggle(e) {
+  baseline = e.target.checked;
+  mandate = null;
+  showErr('');
+  $('btn-mandate').disabled = baseline;
+  $('intent').disabled = baseline;
+  if (baseline) {
+    $('chips').replaceChildren(el('div', 'chip', 'NO MANDATE'), el('div', 'chip', 'BASELINE RULES ONLY'));
+    $('parsed-by').textContent = `policy pack: ${data?.policy?.id ?? region} · baseline rules`;
+    $('mandate-card').classList.add('on');
+    $('mandate-card').dataset.state = 'baseline';
+    setPill('BASELINE ARMED', 'armed');
+    setState('MANDATE_ARMED');
+  } else {
+    $('mandate-card').classList.remove('on');
+    $('mandate-card').dataset.state = 'empty';
+    setPill('IDLE', '');
+    setState('IDLE');
+  }
+}
+
+// Compliance is data: switching the pack re-runs check() with the new JSON — same engine, new basis/ref.
+async function onPackChange(e) {
+  const next = e.target.value;
+  try {
+    packs[next] ??= await loadJSON(`/policies/${next}.json`);
+  } catch (err) {
+    console.warn('[finalcheck] pack load failed:', err.message);
+    e.target.value = region;
+    return;
+  }
+  region = next;
+  data.policy = packs[next];
+  $('banner-pack').textContent = data.policy.label ?? data.policy.id;
+  if (baseline) $('parsed-by').textContent = `policy pack: ${data.policy.id} · baseline rules`;
+  if (guardVerdict) renderVerdict();
+  if (fixVerdict) renderRecheck();
 }
 
 // 5 — approve: build the AP2-style receipt and hash it.
@@ -250,6 +308,7 @@ async function onApprove() {
   btn.disabled = true;
   const cart = data.runs.rebuild.cart;
   const listing = data.listings.find((l) => l.id === cart.items[0]?.listing_id) ?? null;
+  if (baseline) return approveBaseline(cart);
   try {
     const pending = postSign(cart); // in flight while the client receipt renders
     renderReceipt(await buildReceipt(mandate, cart, fixVerdict, data.policy, listing));
@@ -274,18 +333,35 @@ async function onApprove() {
   }
 }
 
+// No mandate means no client-side intent to hash, so a baseline receipt comes from the server only.
+async function approveBaseline(cart) {
+  const r = await postSign(cart);
+  if (r?.body?.ok === true && r.body.receipt?.sig?.value) {
+    renderReceipt(r.body.receipt, r.body.order_id);
+    $('receipt').dataset.source = 'server';
+    setPill(`SIGNED · ${r.body.receipt.cart_mandate.total} RELEASED`, 'signed');
+    setState('SIGNED');
+  } else {
+    $('btn-approve').disabled = false;
+    $('okline').textContent = '✗ baseline receipts are signed server-side — /api/sign unavailable, try again';
+    $('okline').classList.add('bad');
+  }
+}
+
 function renderReceipt(receipt, orderId = null) {
   window.__receipt = orderId ? { ...receipt, order_id: orderId } : receipt;
-  const flags = [mandate.category, `≤${gbpShort(Number(mandate.max_amount))}`, mandate.one_off ? 'one-off' : 'recurring ok'];
+  const flags = mandate
+    ? [mandate.category, `≤${gbpShort(Number(mandate.max_amount))}`, mandate.one_off ? 'one-off' : 'recurring ok']
+    : ['no mandate', `baseline · ${receipt.checks?.policy_pack ?? region}`];
   const items = receipt.cart_mandate.items.map((i) => `${i.name} ${i.price}`).join(', ');
   $('receipt-pre').textContent = [
     '{',
     `  "mandate": "${flags.join(' · ')}",`,
     `  "cart":    "${items}",`,
     `  "checked": "${receipt.checks.rules} rules · ${receipt.checks.violations} violations",`,
-    `  "intent":  "${shortHash(receipt.intent_mandate.hash)}",`,
+    `  "intent":  "${receipt.intent_mandate?.hash ? shortHash(receipt.intent_mandate.hash) : 'none (baseline)'}",`,
     `  "sig":     "${shortHash(receipt.sig.value)}",`,
-    `  "expires": "${expiryLabel(receipt.expires)}"` + (orderId ? ',' : ''),
+    `  "expires": "${receipt.expires ? expiryLabel(receipt.expires) : 'n/a'}"` + (orderId ? ',' : ''),
     ...(orderId ? [`  "order":   "${orderId}"`] : []),
     '}',
   ].join('\n');
@@ -327,6 +403,8 @@ async function boot() {
   $('btn-approve').addEventListener('click', onApprove);
   $('btn-copy').addEventListener('click', onCopy);
   $('btn-reset').addEventListener('click', () => location.reload());
+  $('baseline-toggle').addEventListener('change', onBaselineToggle);
+  $('pack-select').addEventListener('change', onPackChange);
   setState('IDLE');
   try {
     const [listings, runs, policy] = await Promise.all([
@@ -335,6 +413,7 @@ async function boot() {
       loadJSON('/policies/uk.json'),
     ]);
     data = { listings, runs, policy };
+    packs.uk = policy;
     setState(state);
   } catch (e) {
     console.error('[finalcheck] boot failed:', e);

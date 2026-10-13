@@ -9,9 +9,6 @@ const { chromium } = createRequire(import.meta.url)('playwright');
 
 const url = process.env.KIT_APP_URL ?? 'http://localhost:8787/ops/';
 const shots = process.env.E2E_SHOTS;
-// /api/sign is best-effort in the UI: 409 is the expected refusal at Guard, 404 means not deployed yet.
-// The browser logs both as console errors, so they're tolerated here and counted separately.
-const TOLERATED = /\/api\/sign$/;
 
 const results = [];
 const ok = (name, cond, got) => {
@@ -25,19 +22,10 @@ const page = await ctx.newPage();
 page.setDefaultTimeout(8000);
 const errors = [];
 const failed = [];
-const tolerated = [];
-page.on('console', (m) => {
-  if (m.type() !== 'error') return;
-  if (TOLERATED.test(m.location()?.url ?? '')) tolerated.push(m.text());
-  else errors.push(m.text());
-});
+page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
 page.on('pageerror', (e) => errors.push('pageerror: ' + e.message));
 page.on('requestfailed', (r) => failed.push(r.url()));
-page.on('response', (r) => {
-  if (r.status() < 400) return;
-  if (TOLERATED.test(r.url())) tolerated.push(`${r.status()} ${r.url()}`);
-  else failed.push(`${r.status()} ${r.url()}`);
-});
+page.on('response', (r) => { if (r.status() >= 400) failed.push(`${r.status()} ${r.url()}`); });
 const shot = async (name) => { if (shots) await page.screenshot({ path: `${shots}/${name}.png`, fullPage: true }); };
 
 try {
@@ -100,10 +88,43 @@ try {
   await page.click('#btn-reset');
   await page.waitForLoadState('networkidle');
   ok('reset returns to IDLE', (await page.textContent('#status-pill')) === 'IDLE', await page.textContent('#status-pill'));
+  ok('reset restores UK pack', (await page.inputValue('#pack-select')) === 'uk', await page.inputValue('#pack-select'));
+
+  // Baseline mode — no mandate, UK pack: only recurring + injection fire (no cap → no OVER_BUDGET)
+  const codes = () => page.locator('.flag').evaluateAll((els) => els.map((e) => e.dataset.code));
+  await page.check('#baseline-toggle');
+  ok('baseline: pill BASELINE ARMED', (await page.textContent('#status-pill')) === 'BASELINE ARMED', await page.textContent('#status-pill'));
+  ok('baseline: mandate button disabled', await page.locator('#btn-mandate').isDisabled(), null);
+  await page.click('#btn-run');
+  await page.click('#btn-guard');
+  const bCodes = await codes();
+  ok('baseline UK: exactly 2 flags, recurring + injection', bCodes.length === 2 && bCodes.includes('UNDISCLOSED_RECURRING') && bCodes.includes('INJECTED_INSTRUCTION'), bCodes);
+  ok('baseline UK: no OVER_BUDGET', !bCodes.includes('OVER_BUDGET'), bCodes);
+  const ukBasis = (await page.locator('.flag .basis').allTextContents()).join(' | ');
+  ok('baseline UK: basis cites DMCC Act', ukBasis.includes('DMCC Act'), ukBasis);
+  ok('baseline UK: #vmeta uk + baseline', /policy: uk-2026-10 · baseline/.test(await page.textContent('#vmeta')), await page.textContent('#vmeta'));
+
+  // Same engine, different data: switch the pack and the basis/ref lines change in place
+  await page.selectOption('#pack-select', 'sg');
+  await page.waitForFunction(() => document.getElementById('vmeta').textContent.includes('sg-2026-10'));
+  const sgCodes = await codes();
+  const sgBasis = (await page.locator('.flag .basis').allTextContents()).join(' | ');
+  ok('baseline SG: still exactly 2 flags', sgCodes.length === 2 && !sgCodes.includes('OVER_BUDGET'), sgCodes);
+  ok('baseline SG: basis changed to SG refs', sgBasis !== ukBasis && sgBasis.includes('Consumer Protection (Fair Trading)'), sgBasis);
+  ok('baseline SG: banner names Singapore pack', (await page.textContent('#banner-pack')).includes('Singapore'), await page.textContent('#banner-pack'));
+
+  // Baseline approve — receipt comes from the server (no mandate to hash client-side)
+  await page.click('#btn-fix');
+  ok('baseline: re-check 0 violations', (await page.textContent('#okline'))?.includes('0 violations · 2 rules · policy sg-2026-10'), await page.textContent('#okline'));
+  await page.click('#btn-approve');
+  await page.waitForSelector('#receipt.on', { timeout: 8000 });
+  const bPre = await page.textContent('#receipt-pre');
+  ok('baseline: server receipt with order + baseline pack', bPre.includes('baseline · sg-2026-10') && /"order":\s+"ord_/.test(bPre), bPre);
+  ok('baseline: pack select locked after signing', await page.locator('#pack-select').isDisabled(), null);
 
   ok('0 console errors', errors.length === 0, errors);
   ok('0 failed requests', failed.length === 0, failed);
-  console.log(`info  receipt source: ${source}; tolerated /api/sign noise: ${tolerated.length ? tolerated.join(' | ') : 'none'}`);
+  console.log(`info  default-path receipt source: ${source}`);
 } catch (e) {
   ok('flow completed without throwing', false, e.message);
 } finally {
