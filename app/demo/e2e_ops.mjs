@@ -71,6 +71,10 @@ try {
   ok('every flag has a .basis with "·"', basis.length === 3 && basis.every((b) => b.includes('·')), basis);
   ok('#inj1 visible after guard', await page.locator('#inj1').isVisible(), null);
   ok('#vmeta names policy', (await page.textContent('#vmeta'))?.includes('policy: uk-2026-10'), await page.textContent('#vmeta'));
+  ok('risk: A guard → Critical', (await page.textContent('#risk-level')) === 'Critical' && (await page.getAttribute('#risk-level', 'data-level')) === 'critical', await page.textContent('#risk-level'));
+  ok('risk: loss prevented £111.88 over a year', (await page.textContent('#risk-loss')).includes('£52.00 + £4.99/month (£111.88 over a year)'), await page.textContent('#risk-loss'));
+  ok('risk: decision blocked', (await page.textContent('#risk-decision')) === 'Blocked before payment', await page.textContent('#risk-decision'));
+  ok('tally: 1 blocked · £111.88 kept safe', (await page.textContent('#session-tally')) === 'Blocked this session: 1 · £111.88 kept safe', await page.textContent('#session-tally'));
   ok('live feed: visible below the columns', await page.locator('#feed').isVisible(), null);
   ok('live feed: refusal row after Guard', await feedRow('refusal', tGuard), await page.textContent('#feed-rows'));
   ok('live feed: refusal row lists rule codes', /OVER_BUDGET, UNDISCLOSED_RECURRING, INJECTED_INSTRUCTION/.test(await page.textContent('#feed-rows')), null);
@@ -91,6 +95,7 @@ try {
   const sig = await page.evaluate(() => window.__receipt?.sig?.value);
   ok('window.__receipt.sig.value starts 0x', typeof sig === 'string' && sig.startsWith('0x'), sig);
   ok('receipt shows 0x… sig', /"sig":\s+"0x[0-9a-f]{4}…[0-9a-f]{4}"/.test(await page.textContent('#receipt-pre')), await page.textContent('#receipt-pre'));
+  ok('risk: after approve → Low, approved with receipt', (await page.textContent('#risk-level')) === 'Low' && (await page.textContent('#risk-decision')) === 'Approved with signed intent receipt', await page.textContent('#risk'));
   ok('pill SIGNED · £34.99 RELEASED', (await page.textContent('#status-pill')) === 'SIGNED · £34.99 RELEASED', await page.textContent('#status-pill'));
   ok('body data-state SIGNED', (await page.getAttribute('body', 'data-state')) === 'SIGNED', null);
   await page.click('#btn-copy');
@@ -118,6 +123,7 @@ try {
   // reset
   await page.click('#btn-reset');
   await page.waitForLoadState('networkidle');
+  ok('reset clears the tally', (await page.textContent('#session-tally')) === 'Blocked this session: 0 · £0.00 kept safe', await page.textContent('#session-tally'));
   ok('reset returns to IDLE', (await page.textContent('#status-pill')) === 'IDLE', await page.textContent('#status-pill'));
   ok('reset restores UK pack', (await page.inputValue('#pack-select')) === 'uk', await page.inputValue('#pack-select'));
 

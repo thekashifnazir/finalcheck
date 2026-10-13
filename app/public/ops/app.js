@@ -4,6 +4,7 @@ import { parseIntent, validateMandate, toChips, expiryLabel } from '/lib/parse.j
 import { check, formatPence } from '/lib/rules.js';
 import { buildCart, cartTotals } from '/lib/cart.js';
 import { buildReceipt } from '/lib/receipt.js';
+import { financialRisk } from '/lib/risk.js';
 
 const $ = (id) => document.getElementById(id);
 const STAGGER_MS = 350;
@@ -13,7 +14,8 @@ let state = 'IDLE';
 let data = null;          // { listings, byId, scenarios, trust, policy }
 let scenarioKey = 'A';
 let keys = null;          // GET /api/keys; null → no server to verify against (static mode), buttons stay hidden
-let runToken = 0;         // bumped on scenario reset so late /api/sign replies can't touch a new run
+let runToken = 0;
+const tally = { blocked: 0, pence: 0 }; // this page session only; Reset (reload) clears it         // bumped on scenario reset so late /api/sign replies can't touch a new run
 let mandate = null;
 let fixVerdict = null;
 let guardVerdict = null;
@@ -41,8 +43,7 @@ function setState(next) {
 }
 
 function show(id) {
-  $(id).style.display = 'block';
-  $(id).dataset.state = 'shown';
+  $(id).dataset.state = 'shown'; // styles.css shows #stage2/#stage4 on [data-state="shown"]
 }
 
 function el(tag, cls, text) {
@@ -109,9 +110,9 @@ function renderListings(cart) {
     card.append(el('span', 'price', gbp(l.price)));
     if (l.hidden_text) {
       inj += 1;
-      // What the merchant page actually serves: white-on-white, 1px — invisible to the human.
+      // What the merchant page actually serves (fixture hidden_style: white-on-white, 1px) — styled
+      // by .hidden-raw in styles.css so no inline styles come from JS.
       const raw = el('span', 'hidden-raw', ' ' + l.hidden_text);
-      raw.setAttribute('style', l.hidden_style || '');
       raw.setAttribute('aria-hidden', 'true');
       card.append(raw);
       // Revealed by the guard. Displayed as data only — never interpreted.
@@ -216,12 +217,18 @@ async function postSign(cart) {
 function onGuard() {
   if (state !== 'AGENT_SHOPPING') return;
   renderVerdict();
+  const risk = financialRisk(guardVerdict);
+  if (!guardVerdict.ok) {
+    tally.blocked += 1;
+    tally.pence += risk.loss_prevented.pence;
+    $('session-tally').textContent = `Blocked this session: ${tally.blocked} · ${gbp(tally.pence)} kept safe`;
+  }
   // Reveal only the listings the INJECTED_INSTRUCTION evidence names.
   const named = new Set(guardVerdict.violations.filter((v) => v.code === 'INJECTED_INSTRUCTION').map((v) => v.evidence?.listing_id));
   document.querySelectorAll('.hidden-inj').forEach((n) => n.classList.toggle('on', named.has(n.dataset.listing)));
   $('verdict').classList.add('on');
   $('verdict').dataset.state = 'shown';
-  $('verdict-hint').style.display = 'none';
+  $('verdict-hint').hidden = true;
   $('btn-guard').disabled = true;
   setState('VIOLATIONS');
   // Log the refusal server-side too; the on-screen verdict never waits for it.
@@ -256,6 +263,7 @@ function renderVerdict() {
   const pack = v.policy_pack || data.policy?.id;
   $('vmeta').textContent = `${v.rules_checked} rules checked · ${k} violation${k === 1 ? '' : 's'}` + (pack ? ` · policy: ${pack}` : '') + (baseline ? ' · baseline' : '');
   $('verdict').dataset.mode = v.mode ?? (baseline ? 'baseline' : 'mandate');
+  renderRisk(v);
   if (state === 'AGENT_SHOPPING' || state === 'VIOLATIONS') setPill(`${k} VIOLATION${k === 1 ? '' : 'S'} BLOCKED`, k ? 'fired' : 'armed');
 }
 
@@ -339,6 +347,7 @@ async function onApprove() {
     renderReceipt(await buildReceipt(mandate, cart, fixVerdict, data.policy, listing));
     setPill(`SIGNED · ${window.__receipt.cart_mandate.total} RELEASED`, 'signed');
     setState('SIGNED');
+    renderRisk(fixVerdict);
     const r = await pending;
     if (token === runToken && r?.body?.ok === true && r.body.receipt?.sig?.value) {
       const client = window.__receipt;
@@ -366,6 +375,7 @@ async function approveBaseline(cart) {
     $('receipt').dataset.source = 'server';
     setPill(`SIGNED · ${r.body.receipt.cart_mandate.total} RELEASED`, 'signed');
     setState('SIGNED');
+    renderRisk(fixVerdict);
   } else {
     $('btn-approve').disabled = false;
     $('okline').textContent = '✗ baseline receipts are signed server-side — /api/sign unavailable, try again';
@@ -485,7 +495,7 @@ function onScenarioChange(e) {
   scenarioKey = e.target.value;
   runToken += 1;
   $('intent').value = scn().intent;
-  for (const id of ['stage2', 'stage4']) { $(id).style.display = 'none'; $(id).dataset.state = 'hidden'; }
+  for (const id of ['stage2', 'stage4']) $(id).dataset.state = 'hidden';
   for (const id of ['feed2', 'listings', 'cart1', 'feed4', 'cart2', 'flags']) $(id).replaceChildren();
   $('okline').textContent = '';
   $('okline').classList.remove('bad');
@@ -497,7 +507,7 @@ function onScenarioChange(e) {
   $('receipt').dataset.state = 'hidden';
   delete $('receipt').dataset.source;
   setReceiptMode('signed');
-  $('verdict-hint').style.display = '';
+  $('verdict-hint').hidden = false;
   for (const id of ['btn-guard', 'btn-fix', 'btn-approve', 'btn-halt']) $(id).disabled = false;
   $('btn-approve').hidden = false;
   $('btn-halt').hidden = true;
@@ -505,6 +515,7 @@ function onScenarioChange(e) {
   guardVerdict = fixVerdict = null;
   window.__receipt = undefined;
   resetVerify(false);
+  $('risk').hidden = true;
   if (baseline) {
     setPill('BASELINE ARMED', 'armed');
     setState('MANDATE_ARMED');
@@ -516,6 +527,19 @@ function onScenarioChange(e) {
     setPill('IDLE', '');
     setState('IDLE');
   }
+}
+
+// Financial risk read-out (lib/risk.js): level, money kept safe, why, evidence, decision.
+function renderRisk(verdict) {
+  const r = financialRisk(verdict);
+  $('risk-level').textContent = r.level;
+  $('risk-level').dataset.level = r.level.toLowerCase();
+  $('risk-loss').textContent = r.loss_prevented.label;
+  $('risk-reason').textContent = r.reason;
+  $('risk-evidence').textContent = r.evidence.join(', ');
+  $('risk-decision').textContent = r.decision;
+  $('risk').dataset.level = r.level.toLowerCase();
+  $('risk').hidden = false;
 }
 
 // ── verify: the server checks the signature over the canonical receipt; tampering any field breaks it ──
