@@ -12,7 +12,7 @@
 
 <h2 align="center"><a href="https://finalcheck.kashifnazir.com">👉 finalcheck.kashifnazir.com</a></h2>
 
-**SGN × LSE Generate Fintech Hackathon** · track: Fraud and Security · team: FinalCheck
+**SGN × LSE Generate Fintech Hackathon** · track: Fraud and Security · team: Billionaire's Dream
 
 > Everything on screen runs on demo data: a scripted agent, fictional shops and a mocked payment
 > rail. No real money moves, and the app says so on every page.
