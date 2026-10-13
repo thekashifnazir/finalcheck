@@ -12,3 +12,4 @@ demo/raw/ui/
 .wrangler/
 node_modules/
 .env
+demo/node_modules

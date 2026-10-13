@@ -224,46 +224,64 @@ async function main() {
     await (page as any).screencast.start({ path: `${outDir}/capture.webm`, size: SIZE, fps: 30, quality: 90 });
   }
 
-  // 1. land on the app — hold so the first frame reads as "what it is"
-  await go(appUrl, 300);
+  // Timings come from `kit-video --timings` on demo/script.md (VO ≈ 71s).
+  // person 0–10 · why now 10–18 · demo 18–52 (wow ≈ 31–35) · trust 52–64 · close 64–71
+  const origin = new URL(appUrl).origin;
+  await page.request.post(`${origin}/api/events/reset`).catch(() => {}); // clean feed for the close
+
+  // 1. "Meet Priya…" — the consumer view: what protects her by default
+  await go(`${origin}/`, 300);
   markStart();
+  await at(2.0);
+  await highlight(page.locator("#c-protection"), 6500, { label: "on by default — even without a mandate" });
 
-  // 2. FinalCheck end to end. at(s) marks are paced to demo/script.md at ~150 wpm:
-  //    what-it-is 0–4 · problem 4–14 · mandate 14–19 · unguarded 19–30 · guard 30–38 · approve 38–44 · close 44–47
-  // "So I set a mandate…" — type during the problem line so the card lands as it's named
-  await at(10.5);
+  // "…nothing checks the agent before the money moves." → the checkpoint itself
+  await at(15.0);
+  await go(appUrl, 600);
+
+  // 2. "FinalCheck turns her words into a mandate…"
   await page.locator("#intent").fill(""); // start from an empty box so the typed intent reads cleanly
-  await type(page.locator("#intent"), "Gift for my mum — under £40, no subscriptions", 250);
-  await click(page.locator("#btn-mandate"), 500, "arm the mandate");
+  await type(page.locator("#intent"), "Gift for my mum — under £40, no subscriptions", 200);
+  await click(page.locator("#btn-mandate"), 400, "arm the mandate");
   await page.locator("#mandate-card.on").waitFor();
-  await highlight(page.locator("#mandate-card"), 3200, { label: "mandate → hard spending rules" });
+  await highlight(page.locator("#mandate-card"), 2600, { label: "£40 cap · one-off · gift · expires Fri" });
 
-  // "Unguarded, the agent picks a £52 hamper and sneaks in a £4.99 monthly club…"
-  await at(19.0);
-  await click(page.locator("#btn-run"), 600, "agent shops — guard off");
+  // "Unguarded, the agent picks a £52 hamper and adds a £4.99 monthly club."
+  await at(24.0);
+  await click(page.locator("#btn-run"), 500, "agent shops — guard off");
   await hold(900); // step rows fade in on a 350ms stagger
-  await highlight(page.locator(".cart"), 3000, { label: "£56.99 — over budget + hidden monthly add-on" });
-  // "…the listing hid instructions only the agent could read"
-  await highlight(page.locator(".listing.picked"), 2600, { zoom: false, label: "listing carries agent-only text" });
+  await highlight(page.locator(".cart"), 3000, { label: "£56.99 pending" });
 
-  // "With FinalCheck on, every action is checked against my mandate…"
-  await at(29.5);
-  await click(page.locator("#btn-guard"), 500, "re-run with FinalCheck");
+  // "Why? The listing hid white-on-white text only the agent could read."
+  await at(30.0);
+  await highlight(page.locator(".listing.picked"), 3000, { zoom: false, label: "this listing hides agent-only text" });
+
+  // "FinalCheck blocks all 3…"
+  await at(34.0);
+  await click(page.locator("#btn-guard"), 400, "re-run with FinalCheck");
   await page.locator("#verdict.on").waitFor();
-  // "…over budget, hidden recurring charge, injected text — quarantined."
-  await highlight(page.locator("#flags"), 3800, { label: "3 violations, each with its rule basis" });
-  await highlight(page.locator("#inj1"), 2000, { zoom: false, label: "injected text quarantined — shown, never obeyed" });
+  await highlight(page.locator("#inj1"), 2400, { label: "“ignore the price limit” — shown, never obeyed" });
+  await highlight(page.locator("#flags"), 4200, { label: "3 blocked, each with its rule basis" });
 
-  // 3. "Approve the safe cart, and we sign an intent receipt — proof for any dispute."
-  await at(37.0);
-  await click(page.locator("#btn-fix"), 600, "reject — agent rebuilds the cart");
+  // "Sent back, the agent finds a £34.99 tea set. Priya approves…"
+  await at(43.5);
+  await click(page.locator("#btn-fix"), 1400, "reject — agent rebuilds the cart");
+  await at(47.8);
   await click(page.locator("#btn-approve"), 400, "approve & sign");
   await page.locator("#receipt.on").waitFor();
-  await highlight(page.locator("#receipt"), 3800, { label: "signed intent receipt" });
-  await highlight(page.locator("#dispute"), 2400, { zoom: false, label: "dispute-ready evidence pack" });
+  await highlight(page.locator("#receipt"), 3600, { label: "receipt of exactly what she authorised" });
 
-  // closing line lands on the signed receipt
-  await at(47.0);
+  // 3. Trust: "Real… Mocked… No real money moves."
+  await at(53.0);
+  await highlight(page.locator("#dispute"), 2600, { zoom: false, label: "dispute-ready evidence" });
+  await at(59.5);
+  await highlight(page.locator("#demo-banner"), 4000, { label: "demo data — mocked agent, shops and payment" });
+
+  // 4. Close: back to Priya's view — what her agent did, in plain English
+  await at(64.0);
+  await go(`${origin}/`, 300);
+  await highlight(page.locator("#c-activity-section"), 5000, { label: "what her agent did" });
+  await at(71.5);
 
   // camera cues for the compositor: kit-video feeds these to renderers that can
   // do post-capture zoom/callouts (hyperframes). `flat` marks whether this take
