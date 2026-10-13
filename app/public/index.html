@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FinalCheck</title>
+<link rel="icon" href="data:,">
+<!-- Deliberately plain: the design team restyles this page against the c- ids. -->
+<style>body { max-width: 720px; margin: 0 auto; padding: 0 16px; font-family: system-ui, sans-serif; line-height: 1.5; }</style>
+<script type="module" src="/consumer.js"></script>
+</head>
+<body>
+<p id="c-banner">Demo: nothing here moves real money. <span id="c-pack">Policy pack: loading…</span></p>
+
+<header id="c-header">
+  <h1>FinalCheck</h1>
+  <p id="c-tagline">Your AI agent can shop. It can't overspend, get scammed, or sign you up to things.</p>
+  <p><a id="c-ops-link" href="/ops/">ops view →</a></p>
+</header>
+
+<main>
+  <p id="c-boot-error" role="alert"></p>
+
+  <section id="c-protection" aria-labelledby="c-protection-status">
+    <h2 id="c-protection-status">Protected</h2>
+    <label for="c-region">Region</label>
+    <select id="c-region">
+      <option value="uk">United Kingdom</option>
+      <option value="sg">Singapore</option>
+    </select>
+    <ul id="c-bullets"></ul>
+    <p id="c-protection-note">These apply to every purchase, even without a mandate.</p>
+  </section>
+
+  <section id="c-mandate" aria-labelledby="c-mandate-heading">
+    <h2 id="c-mandate-heading">Spending mandate</h2>
+
+    <div id="c-mandate-active" hidden>
+      <p id="c-mandate-summary"></p>
+      <p id="c-mandate-note">Saved on this device (demo).</p>
+      <button id="c-revoke" type="button">Revoke</button>
+    </div>
+
+    <div id="c-mandate-form">
+      <label for="c-intent">What may your agent buy?</label><br>
+      <textarea id="c-intent" rows="3" cols="60" maxlength="500">Buy a birthday gift for my mum, under £40, one-off, no subscriptions</textarea><br>
+      <button id="c-set-mandate" type="button">Set mandate</button>
+      <button id="c-skip" type="button">Skip — baseline only</button>
+      <p id="c-mandate-error" role="alert"></p>
+      <p id="c-skip-confirm" hidden>Your agent won't be asked again; baseline protection stays on.</p>
+    </div>
+
+    <p>
+      <input id="c-ask-toggle" type="checkbox" checked>
+      <label for="c-ask-toggle">Ask me before each purchase without a mandate</label>
+    </p>
+  </section>
+
+  <section id="c-activity-section" aria-labelledby="c-activity-heading">
+    <h2 id="c-activity-heading">What your agent did</h2>
+    <p id="c-activity-status" aria-live="polite"></p>
+    <ol id="c-activity"></ol>
+  </section>
+</main>
+
+<footer id="c-footer">
+  <p>Agents connect via MCP · nothing here moves real money · demo</p>
+</footer>
+</body>
+</html>

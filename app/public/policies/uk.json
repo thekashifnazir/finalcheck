@@ -1,6 +1,32 @@
 {
   "id": "uk-2026-10",
   "label": "UK policy pack (illustrative subset)",
+  "region": "UK",
+  "currency": "GBP",
+  "baseline_rules": [
+    "UNDISCLOSED_RECURRING",
+    "INJECTED_INSTRUCTION",
+    "RESTRICTED_CATEGORY",
+    "MERCHANT_UNVERIFIED",
+    "PRICE_DRIFT",
+    "FIRST_TIME_PAYEE",
+    "PRESSURE_CUE",
+    "DATA_EXFIL",
+    "CURRENCY_MISMATCH"
+  ],
+  "mandate_rules": [
+    "OVER_BUDGET",
+    "CATEGORY_MISMATCH",
+    "EXPIRED",
+    "QUANTITY_ANOMALY"
+  ],
+  "baseline_summary": [
+    "Blocks gift-card, crypto and money-transfer purchases",
+    "Blocks subscriptions or add-ons you didn't ask for",
+    "Quarantines text on a page aimed at your agent, not you",
+    "Flags lookalike shops and fees that appear only at checkout",
+    "Never lets your card or address be typed into a message box"
+  ],
   "rules": {
     "OVER_BUDGET": {
       "basis": "Act within the customer's stated limit — delivering good outcomes",
@@ -21,6 +47,38 @@
     "EXPIRED": {
       "basis": "Consent is time-bound — authorisation lapses at expiry",
       "ref": "PSD2 SCA / cVRP consent parameters"
+    },
+    "RESTRICTED_CATEGORY": {
+      "basis": "Gift cards, crypto and money transfers are how scams cash out — never bought without a human",
+      "ref": "Action Fraud / UK Finance scam guidance (gift cards, crypto, money transfer)"
+    },
+    "MERCHANT_UNVERIFIED": {
+      "basis": "Pay only a merchant whose identity checks out — lookalike shops are a top scam route",
+      "ref": "Pay.UK Confirmation of Payee (payee name checks)"
+    },
+    "PRICE_DRIFT": {
+      "basis": "The price shown up front must be the price paid — no fees revealed only at checkout",
+      "ref": "DMCC Act 2024, Sch 20 (drip pricing)"
+    },
+    "FIRST_TIME_PAYEE": {
+      "basis": "A first payment to a new payee gets a pause and a closer look",
+      "ref": "Payment Services (Amendment) Regs 2024 — outbound payment delay for fraud checks"
+    },
+    "PRESSURE_CUE": {
+      "basis": "Urgency and pressure are scam signals — the agent never rushes a payment",
+      "ref": "DMCC Act 2024, Part 4 Ch 1 (aggressive practices, false urgency)"
+    },
+    "DATA_EXFIL": {
+      "basis": "Card and identity data go only to the payment rail, never into free text",
+      "ref": "UK GDPR Art 5(1)(f) security; PCI DSS"
+    },
+    "CURRENCY_MISMATCH": {
+      "basis": "The charge must be in the currency the customer authorised",
+      "ref": "Payment Services Regulations 2017 (currency conversion disclosure)"
+    },
+    "QUANTITY_ANOMALY": {
+      "basis": "The cart must match what was asked for — one gift means one item",
+      "ref": "AP2: cart mandate must derive from the intent mandate"
     }
   },
   "receipt": {
