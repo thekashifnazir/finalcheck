@@ -1,7 +1,11 @@
 name = "finalcheck"
 main = "worker/index.js"
 compatibility_date = "2026-10-01"
-workers_dev = true
+workers_dev = false
+
+routes = [
+  { pattern = "finalcheck.kashifnazir.com", custom_domain = true }
+]
 
 [assets]
 directory = "./public"

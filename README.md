@@ -3,14 +3,14 @@
 <h3 align="center">The last checkpoint before an AI agent spends your money.</h3>
 
 <p align="center">
-  <a href="https://finalcheck.kash-553.workers.dev"><img src="https://img.shields.io/badge/%E2%96%B6%20Try%20it%20live-finalcheck.kash--553.workers.dev-1685EE?style=for-the-badge" alt="Try it live: finalcheck.kash-553.workers.dev" height="44"></a>
+  <a href="https://finalcheck.kashifnazir.com"><img src="https://img.shields.io/badge/%E2%96%B6%20Try%20it%20live-finalcheck.kashifnazir.com-1685EE?style=for-the-badge" alt="Try it live: finalcheck.kashifnazir.com" height="44"></a>
 </p>
 <p align="center">
-  <a href="https://finalcheck.kash-553.workers.dev/ops/"><img src="https://img.shields.io/badge/Live%20demo-ops%20console-062B62?style=for-the-badge" alt="Live demo: ops console"></a>
+  <a href="https://finalcheck.kashifnazir.com/ops/"><img src="https://img.shields.io/badge/Live%20demo-ops%20console-062B62?style=for-the-badge" alt="Live demo: ops console"></a>
   <a href="demo/demo.mp4"><img src="https://img.shields.io/badge/Demo%20video-1%3A17-2FC69B?style=for-the-badge" alt="Demo video 1:17"></a>
 </p>
 
-<h2 align="center"><a href="https://finalcheck.kash-553.workers.dev">👉 finalcheck.kash-553.workers.dev</a></h2>
+<h2 align="center"><a href="https://finalcheck.kashifnazir.com">👉 finalcheck.kashifnazir.com</a></h2>
 
 **SGN × LSE Generate Fintech Hackathon** · track: Fraud and Security · team: FinalCheck
 
@@ -19,8 +19,8 @@
 
 ### ▶ FinalCheck in 30 seconds
 
-<p align="center"><a href="https://finalcheck.kash-553.workers.dev/media/explainer-fotor.mp4"><img src="docs/img/explainer-fotor.gif" alt="30-second explainer: an AI agent shops, FinalCheck checks the cart, an approved cart gets a receipt" width="720"></a><br>
-<sub>Explainer video made with <b>Fotor</b> AI · <a href="https://finalcheck.kash-553.workers.dev/media/explainer-fotor.mp4">watch with sound (MP4)</a> · <a href="app/public/media/explainer-fotor.mp4">file in repo</a> · also on the <a href="https://finalcheck.kash-553.workers.dev">live site</a></sub></p>
+<p align="center"><a href="https://finalcheck.kashifnazir.com/media/explainer-fotor.mp4"><img src="docs/img/explainer-fotor.gif" alt="30-second explainer: an AI agent shops, FinalCheck checks the cart, an approved cart gets a receipt" width="720"></a><br>
+<sub>Explainer video made with <b>Fotor</b> AI · <a href="https://finalcheck.kashifnazir.com/media/explainer-fotor.mp4">watch with sound (MP4)</a> · <a href="app/public/media/explainer-fotor.mp4">file in repo</a> · also on the <a href="https://finalcheck.kashifnazir.com">live site</a></sub></p>
 
 ### ▶ The product, live
 
@@ -41,8 +41,8 @@ authorised.
 
 | Where | What to do | What you'll see |
 |---|---|---|
-| [**Your protection**](https://finalcheck.kash-553.workers.dev) (`/`) | Type "buy something nice for mum" | The page asks only for what you left out (price, renewals, purpose, end date) and builds your spending rule live |
-| [**Ops console**](https://finalcheck.kash-553.workers.dev/ops/) (`/ops/`), scenario **A** | Click through the 5 steps in the "How to use this demo" strip | Hidden instruction revealed, 3 violations blocked with the law behind each, **Critical · £111.88 kept safe**, then an approved, verifiable receipt |
+| [**Your protection**](https://finalcheck.kashifnazir.com) (`/`) | Type "buy something nice for mum" | The page asks only for what you left out (price, renewals, purpose, end date) and builds your spending rule live |
+| [**Ops console**](https://finalcheck.kashifnazir.com/ops/) (`/ops/`), scenario **A** | Click through the 5 steps in the "How to use this demo" strip | Hidden instruction revealed, 3 violations blocked with the law behind each, **Critical · £111.88 kept safe**, then an approved, verifiable receipt |
 | Ops console, scenario **B** | Same steps | A lookalike shop 2 characters off the real domain, a fee that appears only at checkout, a card number pasted into a gift message: all blocked |
 | Ops console, scenario **C** | Same steps | "Mum texted from a new number, needs £300 of gift cards": halted, **£0 paid**, refusal record kept |
 | Your protection | Tick **Pause my agent** | Every purchase the agent tries is refused and logged until you resume |
@@ -143,7 +143,7 @@ npm run dev                    # http://localhost:8787  (ops console at /ops/)
 - No key? Everything still works: the parser falls back to the keyword ruleset.
 - Fully offline: `npm run static` serves the pages on http://localhost:8000 (/ and /ops/) without the
   Worker (client-side parse, no feed or server receipts). Port taken? `python3 -m http.server 8001 -d public`.
-- Live: https://finalcheck.kash-553.workers.dev
+- Live: https://finalcheck.kashifnazir.com
 
 ## Models, APIs and external services
 
