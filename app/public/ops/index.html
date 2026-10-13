@@ -4,36 +4,18 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>FinalCheck ops console</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%23333'/%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 2 4 6v9c0 7.5 5.1 13.4 12 15 6.9-1.6 12-7.5 12-15V6z' fill='%231685EE'/%3E%3Cpath d='m10 16 4.5 4.5L23 12' fill='none' stroke='%232FC69B' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="/styles.css">
-<style>
-  .modes { margin: 12px 0 0; padding: 8px 10px; border: 1px solid #ddd; font-size: 13px; }
-  .modes legend { font-size: 11px; color: #666; text-transform: uppercase; }
-  .modes label { display: block; margin: 4px 0; }
-  [hidden] { display: none !important; } /* styles.css sets button{display:block} */
-  .scenario-pick { display: block; font-size: 13px; margin-bottom: 4px; }
-  .receipt.refusal { border-color: #b00; }
-  .receipt.refusal .stamp { color: #b00; }
-  .halt-note { font-size: 13px; color: #b00; }
-  .pubkey, .verify-result { font: 11.5px monospace; margin: 6px 0 0; }
-  .verify-result[data-valid="true"] { color: #080; }
-  .verify-result[data-valid="false"] { color: #b00; }
-  .verify-result mark { background: #ffe08a; }
-  .live { margin-top: 12px; }
-  .live-rows { list-style: none; margin: 0; padding: 0; font: 12px monospace; }
-  .live-row { display: grid; grid-template-columns: 70px 60px 70px 1fr 80px 2fr; gap: 8px; padding: 4px 6px; border-bottom: 1px solid #eee; transition: background 1.5s; }
-  .live-row[data-kind="refusal"] { color: #b00; }
-  .live-row.new { background: #fff3cd; }
-</style>
 </head>
 <body data-state="IDLE">
 <p class="banner" id="demo-banner" role="note">DEMO DATA — scripted agent, seeded store, mocked payment rail. No real money moves. · Policy pack: <span id="banner-pack">UK (illustrative subset)</span></p>
 
 <header class="topbar">
   <div class="brand">
-    <h1>FinalCheck</h1>
-    <p class="sub">Checks every purchase an AI agent tries to make against what you actually authorised.</p>
+    <h1><img src="/logo.png" alt="FinalCheck" width="160" height="36"></h1>
+    <p class="sub">Your AI Agent. Our Fraud Protection. · ops console</p>
   </div>
+  <p class="tally" id="session-tally">Blocked this session: 0 · £0.00 kept safe</p>
   <output class="pill" id="status-pill" aria-live="polite">IDLE</output>
   <button type="button" class="ghost reset" id="btn-reset">Reset demo</button>
 </header>
@@ -88,6 +70,15 @@
       <ul class="flags" id="flags"></ul>
       <p class="vmeta" id="vmeta"></p>
       <button type="button" class="ghost" id="btn-fix">Reject — send back to agent</button>
+      <section class="risk" id="risk" aria-labelledby="h-risk" hidden>
+        <h3 id="h-risk">Financial risk <span class="risk-level" id="risk-level"></span></h3>
+        <dl>
+          <dt>Loss prevented</dt><dd id="risk-loss"></dd>
+          <dt>Reason</dt><dd id="risk-reason"></dd>
+          <dt>Evidence</dt><dd id="risk-evidence"></dd>
+          <dt>Decision</dt><dd id="risk-decision"></dd>
+        </dl>
+      </section>
     </div>
     <article class="receipt" id="receipt" data-state="hidden">
       <h3 class="stamp" id="receipt-stamp">✓ Intent receipt — signed</h3>
