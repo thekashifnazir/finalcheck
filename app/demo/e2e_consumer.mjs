@@ -78,7 +78,9 @@ try {
   });
   console.log(`mode: ${service ? 'service' : 'static'}`);
   if (service) {
-    await page.evaluate(() => fetch('/api/mandate/revoke', { method: 'POST', body: '{}' }));
+    const JSON_POST = { method: 'POST', headers: { 'content-type': 'application/json' } };
+    await page.evaluate((init) => fetch('/api/mandate/revoke', { ...init, body: '{}' }), JSON_POST);
+    await page.evaluate((init) => fetch('/api/prefs', { ...init, body: JSON.stringify({ agents_paused: false }) }), JSON_POST);
     await page.reload();
     await page.waitForSelector('body[data-ready="1"]');
   }
@@ -138,6 +140,28 @@ try {
     await page.waitForSelector('#c-mandate-form:not([hidden])');
   } else {
     check('no agent hint without the service', !(await page.isVisible('#c-agent-hint')));
+  }
+
+  // Kill switch: pausing blocks the agent until the person resumes.
+  await page.check('#c-pause');
+  await page.waitForFunction(() => document.body.dataset.paused === '1');
+  check('pause shows the note', (await page.textContent('#c-pause-note')).startsWith('Paused.'));
+  if (service) {
+    const refused = await mcp('check_cart', { items: [{ listing_id: 'lst_tea_set' }] });
+    check('paused → agent check_cart refused', refused.paused === true && refused.refused === true, refused.reason);
+    await page.waitForFunction(
+      () => [...document.querySelectorAll('#c-activity li')].some((li) => li.textContent.includes('⛔ Stopped: you had paused your agent')),
+      null, { timeout: 12000 },
+    );
+    check('feed: "Stopped: you had paused your agent"', true);
+    await shot('paused');
+  }
+  await page.uncheck('#c-pause');
+  await page.waitForFunction(() => document.body.dataset.paused === '0');
+  check('resume clears the pause', (await page.textContent('#c-pause-note')).includes('can buy'));
+  if (service) {
+    const prefs = await page.evaluate(() => fetch('/api/prefs').then((r) => r.json()));
+    check('agents_paused is false at the end', prefs.agents_paused === false, JSON.stringify(prefs));
   }
 
   // A request that states everything goes straight to review.
