@@ -389,3 +389,8 @@ html { scroll-behavior: smooth; }
   #c-chat-log li { max-width: 92%; }
   #c-chat-actions button, .c-skip-row button { flex: 1; }
 }
+
+/* Explainer video (made with Fotor) */
+#c-explainer h3 { margin: 0 0 var(--c-space-3); color: var(--c-heading); }
+#c-explainer-video { display: block; width: 100%; height: auto; border-radius: var(--c-radius-md); background: var(--c-navy-deep); }
+.c-explainer-credit { margin: var(--c-space-2) 0 0; color: var(--c-ink-muted); font-size: var(--c-text-sm); }
