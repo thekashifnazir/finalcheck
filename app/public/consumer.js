@@ -1,7 +1,7 @@
 // Consumer view: protection status, spending mandate, and what the agent did.
 // Works with or without the FinalCheck service: every /api call falls back to
 // local data, so the page also runs from a plain static server.
-import { parseIntent, validateMandate, expiryLabel } from '/lib/parse.js';
+import { parseIntent, validateMandate, expiryLabel, toChips, missingFields } from '/lib/parse.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -160,29 +160,212 @@ async function parseMandate(text) {
   return validateMandate({ ...m, raw: text, currency });
 }
 
-async function onSetMandate() {
+// Saves a mandate from text (the service when it answers, else this device).
+async function saveMandateText(text) {
+  if (state.mandateSource === 'service') {
+    // Same ruleset as the server, checked here first so a missing cap is explained
+    // without a failed request.
+    validateMandate(parseIntent(text, new Date(), { currency: state.policy.currency }));
+    state.record = (await postJSON('/api/mandate', { text })).mandate;
+  } else {
+    const m = await parseMandate(text);
+    writeLocal(KEY_MANDATE, m);
+    state.record = { mandate: m };
+  }
+}
+
+// ---- mandate conversation ----
+// Free text alone gets baseline protection. The chat asks one question per field the
+// text didn't state, appends each answer as plain words, and runs the combined text
+// through the same parser, so there is still one engine path.
+const FIELDS = ['max_amount', 'recurring', 'category', 'expires'];
+const DAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+const londonToday = () =>
+  new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', weekday: 'long' }).format(new Date()).toLowerCase();
+const sym = () => (state.policy?.currency === 'SGD' ? 'S$' : '£');
+
+const QUESTIONS = {
+  max_amount: {
+    ask: "What's the most it should spend?",
+    replies: () => [20, 40, 75].map((n) => ({ label: `${sym()}${n}`, words: `under ${sym()}${n}` }))
+      .concat({ label: 'No limit — baseline only', decline: true }),
+    free: (t) => {
+      const n = t.match(/(\d+(?:\.\d{1,2})?)/);
+      return n ? `under ${sym()}${n[1]}` : null;
+    },
+    hint: 'Give me an amount, e.g. 40.',
+    unset: 'default: no cap (baseline protection only)',
+    chip: (chips) => chips.filter((c) => c.startsWith('MAX')),
+  },
+  recurring: {
+    ask: 'Can it sign you up to anything that renews?',
+    replies: () => [{ label: 'No — one-off only', words: 'one-off' }, { label: 'Yes, subscriptions are OK', words: 'subscriptions are ok' }],
+    free: (t) => (/^\s*(y|yes|ok|okay|sure|fine)\b/i.test(t) ? 'subscriptions are ok' : /^\s*(n|no|nope)\b/i.test(t) ? 'one-off' : null),
+    hint: 'Yes or no?',
+    unset: 'default: one-off, nothing that renews',
+    chip: (chips, m) => (m.allow_recurring ? ['SUBSCRIPTIONS OK'] : chips.filter((c) => c === 'ONE-OFF' || c === 'NO RECURRING')),
+  },
+  category: {
+    ask: "What's it for?",
+    replies: () => [{ label: 'A gift', words: 'gift' }, { label: 'Anything', words: '' }],
+    free: (t) => t.trim(),
+    unset: 'default: anything',
+    chip: (chips) => chips.filter((c) => c.startsWith('CATEGORY')),
+  },
+  expires: {
+    ask: 'When should this permission end?',
+    // The parser reads "by <weekday>" (23:59 London), so every option is one of those.
+    replies: () => [
+      { label: 'Friday 23:59', words: 'by friday' },
+      { label: 'End of today', words: `by ${londonToday()}` },
+      { label: 'Sunday 23:59', words: 'by sunday' },
+    ],
+    free: (t) => {
+      const d = DAYS.find((day) => t.toLowerCase().includes(day));
+      return d ? `by ${d}` : null;
+    },
+    hint: 'Pick a day, e.g. Saturday.',
+    unset: 'default: Friday 23:59',
+    chip: (chips) => chips.filter((c) => c.startsWith('EXPIRES')),
+  },
+};
+
+const chat = { original: '', words: {}, answered: new Set(), queue: [], stage: 'intent' };
+
+const composed = () => [chat.original, ...FIELDS.map((f) => chat.words[f]).filter(Boolean)].join(', ');
+
+function say(who, text) {
+  const li = document.createElement('li');
+  li.dataset.who = who;
+  const b = document.createElement('b');
+  b.textContent = who === 'you' ? 'You: ' : 'FinalCheck: ';
+  li.append(b, text);
+  $('c-chat-log').append(li);
+}
+
+function showReplies(options) {
+  $('c-chat-replies').replaceChildren(...options.map((o) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = o.label;
+    btn.addEventListener('click', () => onReply(o));
+    return btn;
+  }));
+}
+
+function renderPreview() {
+  const m = parseIntent(composed(), new Date(), { currency: state.policy.currency });
+  const chips = toChips({ ...m, max_amount: m.max_amount ?? 0 });
+  $('c-chat-rows').replaceChildren(...FIELDS.map((f) => {
+    const li = document.createElement('li');
+    li.dataset.field = f;
+    const q = QUESTIONS[f];
+    if (chat.answered.has(f)) {
+      li.textContent = q.chip(chips, m).join(' · ') || (f === 'category' ? 'CATEGORY: ANYTHING' : '');
+    } else {
+      li.textContent = q.unset;
+      li.className = 'c-default';
+    }
+    return li;
+  }));
+  $('c-chat-preview').hidden = false;
+}
+
+function askNext() {
+  const field = chat.queue[0];
+  if (field) {
+    chat.stage = 'asking';
+    say('finalcheck', QUESTIONS[field].ask);
+    showReplies(QUESTIONS[field].replies());
+    $('c-chat-input').placeholder = 'or type your own answer';
+    return;
+  }
+  chat.stage = 'review';
+  say('finalcheck', "Here's your mandate.");
+  showReplies([]);
+  $('c-chat-actions').hidden = false;
+  $('c-chat-input').placeholder = 'or type a new request to start again';
+}
+
+function startChat(prefill = '') {
+  Object.assign(chat, { original: '', words: {}, answered: new Set(), queue: [], stage: 'intent' });
+  $('c-chat-log').replaceChildren();
+  showReplies([]);
+  $('c-chat-preview').hidden = true;
+  $('c-chat-actions').hidden = true;
+  $('c-chat-input').value = prefill;
+  $('c-chat-input').placeholder = 'e.g. buy mum a birthday present';
+  say('finalcheck', 'What should your agent buy? Say it in your own words.');
+}
+
+function onIntent(text) {
+  chat.original = text;
+  const missing = missingFields(text);
+  chat.queue = FIELDS.filter((f) => missing.includes(f));
+  chat.answered = new Set(FIELDS.filter((f) => !missing.includes(f)));
+  say('finalcheck', chat.queue.length
+    ? 'Got it. Baseline protection is on already. A few quick questions so your agent knows your limits.'
+    : 'Got it. That covers your limits.');
+  renderPreview();
+  askNext();
+}
+
+function answer(field, words) {
+  chat.words[field] = words;
+  chat.answered.add(field);
+  chat.queue.shift();
+  renderPreview();
+  askNext();
+}
+
+async function onReply(option) {
+  $('c-mandate-error').textContent = '';
+  say('you', option.label);
+  const field = chat.queue[0];
+  if (option.decline) {
+    say('finalcheck', "OK, no spending mandate. Baseline protection stays on, and your agent won't be asked again.");
+    showReplies([]);
+    await savePrefs({ mandate_choice: 'baseline' });
+    renderMandate();
+    return;
+  }
+  answer(field, option.words);
+}
+
+function onChatSubmit(e) {
+  e.preventDefault();
+  $('c-mandate-error').textContent = '';
+  const text = $('c-chat-input').value.trim();
+  if (!text) return;
+  $('c-chat-input').value = '';
+  if (chat.stage === 'review') startChat();
+  say('you', text);
+  if (chat.stage === 'intent') { onIntent(text); return; }
+  const field = chat.queue[0];
+  const words = QUESTIONS[field].free(text);
+  if (words == null) { say('finalcheck', QUESTIONS[field].hint); return; }
+  answer(field, words);
+}
+
+async function onSaveMandate() {
   const err = $('c-mandate-error');
   err.textContent = '';
-  const text = $('c-intent').value.trim();
-  if (!text) { err.textContent = 'Tell us what your agent may buy, e.g. “a gift under £40”.'; return; }
-  $('c-set-mandate').disabled = true;
+  $('c-save-mandate').disabled = true;
   try {
-    if (state.mandateSource === 'service') {
-      // Same ruleset as the server, checked here first so a missing cap is explained
-      // without a failed request.
-      validateMandate(parseIntent(text, new Date(), { currency: state.policy.currency }));
-      state.record = (await postJSON('/api/mandate', { text })).mandate;
-    } else {
-      const m = await parseMandate(text);
-      writeLocal(KEY_MANDATE, m);
-      state.record = { mandate: m };
-    }
+    await saveMandateText(composed());
     renderMandate();
+    startChat();
   } catch (e) {
     err.textContent = `Couldn't set that mandate: ${e.message}`;
   } finally {
-    $('c-set-mandate').disabled = false;
+    $('c-save-mandate').disabled = false;
   }
+}
+
+function onEditMandate() {
+  const text = composed();
+  startChat(text);
+  $('c-chat-input').focus();
 }
 
 async function onRevoke() {
@@ -269,7 +452,10 @@ async function boot() {
   await loadMandate();
   renderMandate();
   $('c-region').addEventListener('change', onRegion);
-  $('c-set-mandate').addEventListener('click', onSetMandate);
+  startChat();
+  $('c-chat-form').addEventListener('submit', onChatSubmit);
+  $('c-save-mandate').addEventListener('click', onSaveMandate);
+  $('c-edit-mandate').addEventListener('click', onEditMandate);
   $('c-revoke').addEventListener('click', onRevoke);
   $('c-skip').addEventListener('click', onSkip);
   $('c-ask-toggle').addEventListener('change', onAskToggle);

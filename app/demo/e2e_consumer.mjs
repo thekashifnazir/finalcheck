@@ -30,8 +30,18 @@ async function mcp(name, args = {}) {
   return JSON.parse((await res.json()).result.content[0].text);
 }
 
+// Screenshots at key steps when E2E_SHOTS names a directory.
+const SHOTS = process.env.E2E_SHOTS;
+let page;
+async function shot(name) {
+  if (!SHOTS) return;
+  const { mkdirSync } = await import('node:fs');
+  mkdirSync(SHOTS, { recursive: true });
+  await page.screenshot({ path: `${SHOTS}/consumer-${name}.png`, fullPage: true });
+}
+
 const browser = await chromium.launch();
-const page = await (await browser.newContext()).newPage();
+page = await (await browser.newContext()).newPage();
 
 // /api endpoints that aren't deployed yet answer 404/501 on a static server. The page
 // handles that; the browser still logs the failed load, so those are counted apart.
@@ -73,11 +83,31 @@ try {
     await page.waitForSelector('body[data-ready="1"]');
   }
 
-  await page.fill('#c-intent', 'Buy a birthday gift for my mum, under £40, one-off, no subscriptions');
-  await page.click('#c-set-mandate');
+  // Mandate conversation: a vague request → one question per missing field → save.
+  await page.fill('#c-chat-input', 'buy something nice for mum');
+  await page.press('#c-chat-input', 'Enter');
+  await page.waitForSelector('#c-chat-preview:not([hidden])');
+  const defaults = await page.locator('#c-chat-rows li.c-default').count();
+  check('vague request → all 4 fields at default', defaults === 4, `${defaults}`);
+  await shot('chat-start');
+  const asked = [];
+  for (const reply of ['£40', 'No — one-off only', 'A gift', 'Friday 23:59']) {
+    asked.push(await page.locator('#c-chat-log li[data-who="finalcheck"]').last().textContent());
+    await page.click(`#c-chat-replies button:text-is("${reply}")`);
+    if (reply === 'No — one-off only') await shot('chat-midway');
+  }
+  const questions = asked.filter((q) => q.trim().endsWith('?'));
+  check('asks exactly 4 questions, one per missing field', questions.length === 4, questions.map((q) => q.replace('FinalCheck: ', '')).join(' | '));
+  await page.waitForSelector('#c-chat-actions:not([hidden])');
+  const previewRows = await page.locator('#c-chat-rows li').allTextContents();
+  check('preview filled from answers', (await page.locator('#c-chat-rows li.c-default').count()) === 0 && previewRows[0] === 'MAX £40', previewRows.join(' / '));
+  check("ends with \"Here's your mandate\"", (await page.locator('#c-chat-log li').last().textContent()).includes("Here's your mandate"));
+  await shot('chat-review');
+  await page.click('#c-save-mandate');
   await page.waitForSelector('#c-mandate-active:not([hidden])');
   const summary = await page.textContent('#c-mandate-summary');
-  check('set mandate → card', summary.startsWith('Up to £40 · gifts · one-off · until'), summary);
+  check('save → mandate card', summary.startsWith('Up to £40 · gifts · one-off · until Fri 23:59'), summary);
+  await shot('mandate-card');
   const note = await page.textContent('#c-mandate-note');
   check('mandate note matches mode', service ? /spends against this/.test(note) : /on this device/.test(note), note);
 
@@ -105,6 +135,22 @@ try {
   } else {
     check('no agent hint without the service', !(await page.isVisible('#c-agent-hint')));
   }
+
+  // A request that states everything goes straight to review.
+  await page.fill('#c-chat-input', 'Buy a birthday gift for my mum, under £40, one-off, no subscriptions, by Friday');
+  await page.press('#c-chat-input', 'Enter');
+  await page.waitForSelector('#c-chat-actions:not([hidden])');
+  check('complete request → no questions', (await page.locator('#c-chat-replies button').count()) === 0);
+  await page.click('#c-edit-mandate');
+  check('Edit puts the combined text back', (await page.inputValue('#c-chat-input')).includes('under £40'));
+
+  // "No limit" means baseline only, the same as Skip.
+  await page.fill('#c-chat-input', 'buy something nice for mum');
+  await page.press('#c-chat-input', 'Enter');
+  await page.click('#c-chat-replies button:text-is("No limit — baseline only")');
+  await page.waitForSelector('#c-skip-confirm:not([hidden])');
+  check('"No limit" → baseline only', !(await page.isChecked('#c-ask-toggle')));
+  await page.click('#c-ask-toggle'); // back to "ask" so Skip below is a real change
 
   await page.click('#c-skip');
   await page.waitForSelector('#c-skip-confirm:not([hidden])');
