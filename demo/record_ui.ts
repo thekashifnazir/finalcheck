@@ -227,7 +227,7 @@ async function main() {
   // Timings come from `kit-video --timings` on demo/script.md (VO ≈ 71s).
   // person 0–10 · why now 10–18 · demo 18–52 (wow ≈ 31–35) · trust 52–64 · close 64–71
   const origin = new URL(appUrl).origin;
-  await page.request.post(`${origin}/api/events/reset`).catch(() => {}); // clean feed for the close
+  await page.request.post(`${origin}/api/events/reset`, { data: {} }).catch(() => {}); // clean feed for the close
 
   // 1. "Meet Priya…" — the consumer view: what protects her by default
   await go(`${origin}/`, 300);
