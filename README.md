@@ -17,6 +17,13 @@
 > Everything on screen runs on demo data: a scripted agent, fictional shops and a mocked payment
 > rail. No real money moves, and the app says so on every page.
 
+### ▶ FinalCheck in 30 seconds
+
+<p align="center"><a href="https://finalcheck.kash-553.workers.dev/media/explainer-fotor.mp4"><img src="docs/img/explainer-fotor.gif" alt="30-second explainer: an AI agent shops, FinalCheck checks the cart, an approved cart gets a receipt" width="720"></a><br>
+<sub>Explainer video made with <b>Fotor</b> AI · <a href="https://finalcheck.kash-553.workers.dev/media/explainer-fotor.mp4">watch with sound (MP4)</a> · <a href="app/public/media/explainer-fotor.mp4">file in repo</a> · also on the <a href="https://finalcheck.kash-553.workers.dev">live site</a></sub></p>
+
+### ▶ The product, live
+
 <p align="center"><img src="docs/img/demo-scam-blocked.gif" alt="An agent is tricked by hidden text on a product page; FinalCheck blocks the cart and shows why" width="760"></p>
 
 ## What we built
@@ -143,6 +150,7 @@ npm run dev                    # http://localhost:8787  (ops console at /ops/)
 - **Anthropic Messages API**: Claude (`claude-haiku-5-5` by default, `APP_LLM_MODEL` overrides) for
   one intent-parse call per mandate. Optional. OpenAI `gpt-4.1-mini` is used only if no Anthropic key is set.
 - **Cloudflare Workers + Workers KV**: hosting, API and demo state.
+- **Fotor** (AI design tool): made the 30-second explainer video shown on the site and above.
 - Web Crypto (built in): SHA-256 and Ed25519 for receipt signing; `GET /api/keys` publishes the
   public key and `POST /api/verify` checks a receipt. No payment APIs are called.
 - Model Context Protocol (Streamable HTTP, hand-rolled JSON-RPC) for the agent tools.
