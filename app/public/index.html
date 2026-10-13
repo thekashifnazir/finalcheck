@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>FinalCheck</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 2 4 6v9c0 7.5 5.1 13.4 12 15 6.9-1.6 12-7.5 12-15V6z' fill='%23062B62'/%3E%3Cpath d='m10 16 4.5 4.5L23 12' fill='none' stroke='%232FC69B' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap">
 <link rel="stylesheet" href="/consumer.css">
 <script type="module" src="/consumer.js"></script>
 </head>
@@ -24,24 +27,41 @@
 <main>
   <p id="c-boot-error" role="alert"></p>
 
-  <section id="c-protection" class="c-card" aria-labelledby="c-protection-status">
-    <h2 id="c-protection-status">Protected</h2>
-    <p class="c-region-row"><label for="c-region">Region</label>
-    <select id="c-region">
-      <option value="uk">United Kingdom</option>
-      <option value="sg">Singapore</option>
-    </select></p>
-    <ul id="c-bullets"></ul>
-    <p id="c-protection-note">These apply to every purchase, even without a mandate.</p>
+  <section id="c-protection" aria-labelledby="c-protection-status">
+    <div class="c-hero">
+      <div>
+        <p class="c-eyebrow">Your protection</p>
+        <p class="c-hero-title">You're protected.</p>
+        <p class="c-hero-sub">Your assistant can shop for you. FinalCheck makes sure it follows your rules.</p>
+      </div>
+      <div class="c-hero-side">
+        <h2 id="c-protection-status">Protected</h2>
+        <p class="c-region-row"><label for="c-region">Region</label>
+        <select id="c-region">
+          <option value="uk">United Kingdom</option>
+          <option value="sg">Singapore</option>
+        </select></p>
+      </div>
+    </div>
+    <div class="c-card">
+      <div class="c-card-head">
+        <h3>What's protecting you right now</h3>
+        <span class="c-badge">All active</span>
+      </div>
+      <ul id="c-bullets"></ul>
+      <p id="c-protection-note">These apply to every purchase, even without a mandate.</p>
     <p id="c-pause-row" class="c-toggle-row">
       <input id="c-pause" type="checkbox">
       <label for="c-pause">Pause my agent — block every purchase until I resume</label>
     </p>
     <p id="c-pause-note"></p>
+    </div>
   </section>
 
   <section id="c-mandate" class="c-card" aria-labelledby="c-mandate-heading">
-    <h2 id="c-mandate-heading">Spending mandate</h2>
+    <p class="c-eyebrow">Shop with your assistant</p>
+    <h2 id="c-mandate-heading">What would you like me to find?</h2>
+    <p class="c-hero-sub">Describe it naturally. FinalCheck will keep the purchase within your rules.</p>
 
     <div id="c-mandate-active" hidden>
       <p id="c-mandate-summary"></p>
@@ -61,7 +81,7 @@
       </div>
 
       <section id="c-chat-preview" hidden aria-labelledby="c-chat-preview-heading">
-        <h3 id="c-chat-preview-heading">Your mandate so far</h3>
+        <h3 id="c-chat-preview-heading">Your spending rule</h3>
         <ul id="c-chat-rows"></ul>
         <p id="c-chat-actions" hidden>
           <button id="c-save-mandate" type="button">Save mandate</button>

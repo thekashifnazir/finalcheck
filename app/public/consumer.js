@@ -84,7 +84,7 @@ async function renderProtection() {
   const list = $('c-bullets');
   list.replaceChildren(...state.policy.baseline_summary.map((text) => {
     const li = document.createElement('li');
-    li.textContent = `✓ ${text}`;
+    li.textContent = text; // the check badge comes from consumer.css
     return li;
   }));
 }
