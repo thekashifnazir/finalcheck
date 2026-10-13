@@ -6,16 +6,19 @@
 :root {
   /* brand tokens (BRAND.md) */
   --navy: #062B62; --blue: #1685EE; --mint: #2FC69B; --slate: #496B84;
-  --red: #D64545; --amber: #E8A33D;
-  /* Screen B surfaces: navy darkened ~65%, panels a step lighter */
-  --bg: #041A3B; --panel: #082650; --well: #051F45; --raise: #0C3163; --edge: #1C4274;
+  --red: #B63A3A; --amber: #B16B13;          /* BRAND.md refusal/warning, darkened for light surfaces (as consumer.css) */
+  /* light theme — same values as consumer.css (Figma direction) */
+  --bg: #F6FAFC; --panel: #FFFFFF; --well: #F6FAFC; --raise: #EDF7FF; --edge: #DCE8EF;
   /* text */
-  --ink: #EEF3F9; --muted: #A9BBD0; --dim: #7F97B2; --on-accent: #FFFFFF;
-  --red-ink: #F49A9A; --amber-ink: #F5C67A; --mint-ink: #6FE0BE; --blue-ink: #7DBDF7;
-  --pre-ok: #BFEFDF; --pre-bad: #F6C6C6; --mark-ink: #1B1300;
-  --logo-plate: #FFFFFF;                      /* logo art is on white */
-  --inj-hidden: #FFFFFF;                      /* the merchant's white-on-white injected text */
-  --shadow: 0 10px 35px rgb(0 0 0 / 28%);
+  --ink: #132F45; --muted: #60798B; --dim: #6B8293; --on-accent: #FFFFFF;
+  --red-ink: #B63A3A; --amber-ink: #8A5410; --mint-ink: #168A6D; --blue-ink: #0874D5;
+  --pre-ok: #134E40; --pre-bad: #7A2424; --mark-ink: #FFFFFF;
+  --ok-tint: #EAFAF5; --warn-tint: #FFF7E7; --bad-tint: color-mix(in srgb, var(--red) 6%, var(--panel));
+  --banner-bg: var(--navy); --banner-ink: #DCE6F2;
+  --panel-dark: var(--navy); --on-dark: #FFFFFF; --on-dark-muted: rgb(255 255 255 / 70%);
+  --logo-plate: transparent;                  /* logo art is on white, which is now the page */
+  --inj-hidden: var(--well);                  /* the merchant's hidden text: same colour as the listing it sits on */
+  --shadow: 0 10px 35px rgb(6 43 98 / 5.5%);
   --shadow-btn: 0 7px 16px color-mix(in srgb, var(--blue) 20%, transparent);
   --halo: 0 0 0 3px color-mix(in srgb, currentColor 22%, transparent);
   --eyebrow-ink: var(--blue-ink);
@@ -44,13 +47,15 @@ body { margin: 0; padding: 0 var(--s9) var(--s9); font: var(--fs)/var(--lh) var(
 a { color: var(--blue-ink); }
 
 /* demo banner — trust evidence, always visible */
-.banner { margin: 0 calc(-1 * var(--s9)) var(--s7); padding: var(--s3) var(--s9); background: color-mix(in srgb, var(--amber) var(--tint), var(--bg)); border-bottom: var(--edge-w) solid color-mix(in srgb, var(--amber) var(--tint-line), transparent); color: var(--amber-ink); font: 600 var(--fs-s) var(--mono); }
+.banner { margin: 0 calc(-1 * var(--s9)) var(--s7); padding: var(--s3) var(--s9); background: var(--banner-bg); color: var(--banner-ink); font: 600 var(--fs-s) var(--mono); }
 
 /* header */
 .topbar { display: flex; align-items: center; gap: var(--s8); margin-bottom: var(--s8); }
 .brand { display: flex; align-items: center; gap: var(--s7); }
 .topbar h1 { margin: 0; line-height: 0; }
 .topbar h1 img { height: var(--logo-h); width: var(--logo-w); object-fit: cover; padding: var(--s2) var(--s4); background: var(--logo-plate); border-radius: var(--r); box-sizing: content-box; } /* cover crops the art's padding */
+#home-link { display: inline-block; line-height: 0; border-radius: var(--r); text-decoration: none; }
+#home-link:focus-visible { outline: 2px solid var(--blue); outline-offset: var(--s1); }
 .brand .sub { margin: 0; font-size: var(--fs-m); }
 .sub { margin: var(--s2) 0; color: var(--muted); font-size: var(--fs-m); }
 .pill { display: inline-flex; align-items: center; gap: var(--s4); margin-left: auto; padding: var(--s3) var(--s7); border: var(--edge-w) solid var(--edge); border-radius: var(--r-pill); background: var(--well); color: var(--muted); font: 700 var(--fs-s) var(--sans); letter-spacing: var(--track); white-space: nowrap; }
@@ -153,15 +158,15 @@ button.copy { min-height: 0; padding: var(--s4); font-size: var(--fs-m); }
 /* financial risk + session tally */
 .tally { margin: 0 0 0 auto; font: 700 var(--fs-sm) var(--mono); color: var(--mint-ink); }
 .tally + .pill { margin-left: 0; }
-.risk { margin-top: var(--s6); padding: var(--s6) var(--s7); border: var(--edge-w) solid var(--edge); border-radius: var(--r-tile); background: var(--well); }
-.risk h3 { display: flex; align-items: center; gap: var(--s4); margin: 0 0 var(--s4); font-size: var(--fs-xs); letter-spacing: var(--track-wide); text-transform: uppercase; color: var(--eyebrow-ink); }
+.risk { margin-top: var(--s6); padding: var(--s6) var(--s7); border: var(--edge-w) solid var(--panel-dark); border-radius: var(--r-tile); background: var(--panel-dark); color: var(--on-dark); } /* navy panel, as consumer page */
+.risk h3 { display: flex; align-items: center; gap: var(--s4); margin: 0 0 var(--s4); font-size: var(--fs-xs); letter-spacing: var(--track-wide); text-transform: uppercase; color: var(--on-dark-muted); }
 .risk-level { padding: var(--s1) var(--s5); border-radius: var(--r-pill); font: 700 var(--fs-s) var(--sans); letter-spacing: var(--track); color: var(--on-accent); }
-.risk-level[data-level="critical"], .risk-level[data-level="high"] { background: var(--red); }
-.risk-level[data-level="medium"] { background: var(--amber); color: var(--mark-ink); }
-.risk-level[data-level="low"] { background: var(--mint); color: var(--mark-ink); }
+.risk-level[data-level="critical"], .risk-level[data-level="high"] { background: var(--bad-tint); color: var(--red-ink); }
+.risk-level[data-level="medium"] { background: var(--warn-tint); color: var(--amber-ink); }
+.risk-level[data-level="low"] { background: var(--ok-tint); color: var(--mint-ink); }
 .risk dl { display: grid; grid-template-columns: max-content 1fr; gap: var(--s2) var(--s5); margin: 0; font-size: var(--fs-sm); }
-.risk dt { color: var(--dim); }
-.risk dd { margin: 0; color: var(--ink); }
+.risk dt { color: var(--on-dark-muted); }
+.risk dd { margin: 0; color: var(--on-dark); }
 #risk-loss { font-family: var(--mono); font-weight: 700; }
 
 /* live activity */
