@@ -136,3 +136,19 @@ test('quantity: 1–10 accepted and priced, anything else is an input error', as
   const schema = (await c.rpc('tools/list')).result.tools.find((t) => t.name === 'check_cart').inputSchema;
   assert.deepEqual(schema.properties.items.items.properties.quantity, { type: 'integer', minimum: 1, maximum: 10, description: 'how many (default 1)' });
 });
+
+test('paused agent: check_cart and sign_receipt refused and logged, resume restores', async () => {
+  const c = client();
+  await c.tool('set_mandate', { text: 'birthday gift for mum under £40, one-off' });
+  await c.store.setPrefs({ agents_paused: true });
+  const chk = await c.tool('check_cart', { items: TEA });
+  assert.equal(chk.isError, true);
+  assert.equal(chk.data.paused, true);
+  const sig = await c.tool('sign_receipt', { items: TEA });
+  assert.equal(sig.isError, true);
+  const ev = await c.store.listEvents();
+  assert.deepEqual(ev.slice(0, 2).map((e) => e.violations[0]), ['AGENTS_PAUSED', 'AGENTS_PAUSED']);
+  assert.equal((await c.tool('get_mandate')).data.agents_paused, true);
+  await c.store.setPrefs({ agents_paused: false });
+  assert.equal((await c.tool('sign_receipt', { items: TEA })).data.ok, true);
+});

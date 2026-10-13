@@ -32,9 +32,9 @@ function api(env = { FC_STORE: memoryKV() }) {
 
 test('prefs default, partial patch, and reject bad values', async () => {
   const s = makeStore(memoryKV());
-  assert.deepEqual(await s.getPrefs(), { region: 'uk', mandate_choice: 'ask' });
-  assert.deepEqual(await s.setPrefs({ region: 'sg' }), { region: 'sg', mandate_choice: 'ask' });
-  assert.deepEqual(await s.setPrefs({ mandate_choice: 'baseline' }), { region: 'sg', mandate_choice: 'baseline' });
+  assert.deepEqual(await s.getPrefs(), { region: 'uk', mandate_choice: 'ask', agents_paused: false });
+  assert.deepEqual(await s.setPrefs({ region: 'sg' }), { region: 'sg', mandate_choice: 'ask', agents_paused: false });
+  assert.deepEqual(await s.setPrefs({ mandate_choice: 'baseline' }), { region: 'sg', mandate_choice: 'baseline', agents_paused: false });
   await assert.rejects(s.setPrefs({ region: 'fr' }), /region/);
   await assert.rejects(s.setPrefs({ mandate_choice: 'always' }), /mandate_choice/);
 });
@@ -54,7 +54,7 @@ test('events: newest first, grouped writes keep order, capped, reset clears', as
 
 test('GET/POST /api/prefs and /api/policy', async () => {
   const { call } = api();
-  assert.deepEqual((await call('GET', '/api/prefs')).body, { region: 'uk', mandate_choice: 'ask' });
+  assert.deepEqual((await call('GET', '/api/prefs')).body, { region: 'uk', mandate_choice: 'ask', agents_paused: false });
   assert.equal((await call('POST', '/api/prefs', { region: 'sg' })).body.region, 'sg');
   assert.equal((await call('POST', '/api/prefs', { region: 'fr' })).status, 400);
   assert.equal((await call('GET', '/api/policy?region=uk')).body.id, 'uk-2026-10');
@@ -168,4 +168,10 @@ test('scenario C (3 gift cards) refused; B rebuild signs with the exact total', 
   const b = await call('POST', '/api/sign', { mandate, cart: { items: [{ listing_id: 'lst_afternoon_tea' }] } });
   assert.equal(b.body.ok, true);
   assert.equal(b.body.receipt.cart_mandate.total, (await import('../public/lib/rules.js')).formatPence(b.body.verdict.pending_total));
+});
+
+test('agents_paused must be a boolean', async () => {
+  const { validatePrefsPatch } = await import('../worker/store.js');
+  assert.deepEqual(validatePrefsPatch({ agents_paused: true }), { agents_paused: true });
+  assert.throws(() => validatePrefsPatch({ agents_paused: 'yes' }), /true or false/);
 });

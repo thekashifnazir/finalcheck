@@ -2,7 +2,7 @@
 // makeStore takes anything with KV's get(key, 'json') / put(key, string) / delete(key),
 // so tests pass memoryKV() and the Worker passes env.FC_STORE.
 
-export const DEFAULT_PREFS = { region: 'uk', mandate_choice: 'ask' };
+export const DEFAULT_PREFS = { region: 'uk', mandate_choice: 'ask', agents_paused: false };
 export const REGIONS = ['uk', 'sg'];
 export const MANDATE_CHOICES = ['ask', 'baseline'];
 export const EVENTS_CAP = 50;
@@ -31,6 +31,10 @@ export function validatePrefsPatch(patch) {
   if ('mandate_choice' in patch) {
     if (!MANDATE_CHOICES.includes(patch.mandate_choice)) throw new Error(`mandate_choice must be one of ${MANDATE_CHOICES.join(', ')}`);
     out.mandate_choice = patch.mandate_choice;
+  }
+  if ('agents_paused' in patch) {
+    if (typeof patch.agents_paused !== 'boolean') throw new Error('agents_paused must be true or false');
+    out.agents_paused = patch.agents_paused;
   }
   return out;
 }

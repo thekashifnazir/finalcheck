@@ -6,7 +6,7 @@ import { parseIntent, validateMandate, expiryLabel, toChips, missingFields } fro
 const $ = (id) => document.getElementById(id);
 
 const REGIONS = { uk: 'UK', sg: 'SG' };
-const DEFAULT_PREFS = { region: 'uk', mandate_choice: 'ask' };
+const DEFAULT_PREFS = { region: 'uk', mandate_choice: 'ask', agents_paused: false };
 const KEY_PREFS = 'fc.prefs';
 const KEY_MANDATE = 'fc.mandate';
 
@@ -24,6 +24,7 @@ const REASONS = {
   QUANTITY_ANOMALY: 'more than one was being ordered',
   CURRENCY_MISMATCH: 'it was priced in another currency',
   EXPIRED: 'your mandate had expired',
+  AGENTS_PAUSED: 'you had paused your agent',
 };
 
 const state = { prefs: { ...DEFAULT_PREFS }, policy: null, policies: {}, mandateSource: null, record: null };
@@ -396,6 +397,20 @@ async function onAskToggle(e) {
   renderMandate();
 }
 
+async function onPause(e) {
+  await savePrefs({ agents_paused: e.target.checked });
+  renderPause();
+}
+
+function renderPause() {
+  const paused = Boolean(state.prefs.agents_paused);
+  $('c-pause').checked = paused;
+  $('c-pause-note').textContent = paused
+    ? 'Paused. FinalCheck refuses every purchase your agent tries until you resume.'
+    : 'Your agent can buy within your rules.';
+  document.body.dataset.paused = paused ? '1' : '0';
+}
+
 async function onRegion(e) {
   await savePrefs({ region: e.target.value });
   await renderProtection();
@@ -466,6 +481,8 @@ async function boot() {
   $('c-revoke').addEventListener('click', onRevoke);
   $('c-skip').addEventListener('click', onSkip);
   $('c-ask-toggle').addEventListener('change', onAskToggle);
+  renderPause();
+  $('c-pause').addEventListener('change', onPause);
   await refreshActivity();
   document.body.dataset.ready = '1';
 }
