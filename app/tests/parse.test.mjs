@@ -72,3 +72,8 @@ test('missingFields lists what the person did not say', async () => {
   assert.deepEqual(missingFields(DEMO), ['expires']);
   assert.deepEqual(missingFields('gift under £40, subscriptions ok, by Wednesday'), []);
 });
+
+test('"in 7 days" and "tonight" set the expiry', () => {
+  assert.equal(parseIntent('gift under £10, in 7 days', NOW).expires, '2026-10-20T22:59:00.000Z');
+  assert.equal(parseIntent('gift under £10 by tonight', NOW).expires, '2026-10-13T22:59:00.000Z');
+});

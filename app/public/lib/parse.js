@@ -35,6 +35,13 @@ export function nextWeekdayEnd(now, dow = 5) {
 }
 
 const CUR = '(?:£|S\\$|SGD\\s*|\\$)';
+// N days from today (London), at 23:59.
+function daysAheadEnd(now, n) {
+  const p = londonParts(new Date(now));
+  const d = new Date(Date.UTC(p.y, p.m - 1, p.d + n));
+  return londonToISO(d.getUTCFullYear(), d.getUTCMonth() + 1, d.getUTCDate(), 23, 59);
+}
+
 const AMOUNT_RE = new RegExp(`(?:under|below|max(?:imum)?|less than|up to|no more than|≤|<)\\s*${CUR}?\\s*(\\d+(?:\\.\\d{1,2})?)`, 'i');
 const BARE_AMOUNT_RE = new RegExp(`${CUR}\\s*(\\d+(?:\\.\\d{1,2})?)`, 'i');
 const SGD_RE = /S\$|\bSGD\b/i;
@@ -43,12 +50,16 @@ const ONE_OFF_RE = /no subscriptions?|one[- ]off|no recurring|single payment/i;
 const RECURRING_OK_RE = /subscriptions?\s+(?:are\s+)?(?:ok|fine|allowed)/i;
 const GIFT_RE = /gift|present|birthday/i;
 const BY_DAY_RE = /\bby\s+(sunday|monday|tuesday|wednesday|thursday|friday|saturday)\b/i;
+const IN_DAYS_RE = /\bin\s+(\d{1,2})\s+days?\b/i;
+const TODAY_RE = /\b(?:by\s+)?(?:tonight|end of (?:the )?day|end of today)\b/i;
 
 export function parseIntent(text, now = new Date(), opts = {}) {
   const raw = String(text ?? '').trim();
   const amt = raw.match(AMOUNT_RE) || raw.match(BARE_AMOUNT_RE);
   const allow_recurring = RECURRING_OK_RE.test(raw) && !ONE_OFF_RE.test(raw);
   const by = raw.match(BY_DAY_RE);
+  const inDays = raw.match(IN_DAYS_RE);
+  const today = londonParts(new Date(now)).dow;
   return {
     raw,
     currency: SGD_RE.test(raw) ? 'SGD' : (opts.currency ?? 'GBP'),
@@ -56,7 +67,9 @@ export function parseIntent(text, now = new Date(), opts = {}) {
     one_off: !allow_recurring,
     allow_recurring,
     category: GIFT_RE.test(raw) ? 'gift' : 'general',
-    expires: nextWeekdayEnd(now, by ? DAYS.indexOf(by[1].toLowerCase()) : 5),
+    expires: inDays ? daysAheadEnd(now, Number(inDays[1]))
+      : TODAY_RE.test(raw) ? nextWeekdayEnd(now, today)
+      : nextWeekdayEnd(now, by ? DAYS.indexOf(by[1].toLowerCase()) : 5),
     parsed_by: 'ruleset',
   };
 }
@@ -111,6 +124,6 @@ export function missingFields(text) {
   if (!(AMOUNT_RE.test(raw) || BARE_AMOUNT_RE.test(raw))) missing.push('max_amount');
   if (!(ONE_OFF_RE.test(raw) || RECURRING_OK_RE.test(raw))) missing.push('recurring');
   if (!GIFT_RE.test(raw)) missing.push('category');
-  if (!BY_DAY_RE.test(raw)) missing.push('expires');
+  if (!(BY_DAY_RE.test(raw) || IN_DAYS_RE.test(raw) || TODAY_RE.test(raw))) missing.push('expires');
   return missing;
 }
