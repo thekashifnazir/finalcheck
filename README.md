@@ -3,10 +3,14 @@
 <h3 align="center">The last checkpoint before an AI agent spends your money.</h3>
 
 <p align="center">
-  <b><a href="https://finalcheck.kash-553.workers.dev">▶ Try it live</a></b> ·
-  <a href="https://finalcheck.kash-553.workers.dev/ops/">Live demo (ops console)</a> ·
-  <a href="demo/demo.mp4">Demo video (1:17)</a>
+  <a href="https://finalcheck.kash-553.workers.dev"><img src="https://img.shields.io/badge/%E2%96%B6%20Try%20it%20live-finalcheck.kash--553.workers.dev-1685EE?style=for-the-badge" alt="Try it live: finalcheck.kash-553.workers.dev" height="44"></a>
 </p>
+<p align="center">
+  <a href="https://finalcheck.kash-553.workers.dev/ops/"><img src="https://img.shields.io/badge/Live%20demo-ops%20console-062B62?style=for-the-badge" alt="Live demo: ops console"></a>
+  <a href="demo/demo.mp4"><img src="https://img.shields.io/badge/Demo%20video-1%3A17-2FC69B?style=for-the-badge" alt="Demo video 1:17"></a>
+</p>
+
+<h2 align="center"><a href="https://finalcheck.kash-553.workers.dev">👉 finalcheck.kash-553.workers.dev</a></h2>
 
 **SGN × LSE Generate Fintech Hackathon** · track: Fraud and Security · team: FinalCheck
 
