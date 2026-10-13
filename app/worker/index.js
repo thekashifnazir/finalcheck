@@ -9,7 +9,7 @@ const json = (body, status = 200) => new Response(JSON.stringify(body), { status
 const SYSTEM = `You turn a shopper's plain-English instruction into a spending mandate.
 Reply with ONLY a JSON object, no prose:
 {"max_amount": number|null, "one_off": boolean, "allow_recurring": boolean, "category": "gift"|"general", "expires_hint": string|null}
-max_amount is in pounds. allow_recurring is true only if the user explicitly says subscriptions are fine.`;
+max_amount is the number exactly as the user wrote it, in their own currency — never convert between currencies. allow_recurring is true only if the user explicitly says subscriptions are fine.`;
 
 function llmProvider(env) {
   if (env.APP_ANTHROPIC_API_KEY) return 'anthropic';
@@ -27,7 +27,7 @@ async function callAnthropic(env, text) {
     },
     body: JSON.stringify({
       model: env.APP_LLM_MODEL || 'claude-haiku-5-5',
-      max_tokens: 300,
+      max_tokens: 1024,
       system: SYSTEM,
       messages: [{ role: 'user', content: text }],
     }),
@@ -35,7 +35,7 @@ async function callAnthropic(env, text) {
   });
   if (!r.ok) throw new Error(`anthropic ${r.status}`);
   const data = await r.json();
-  return data.content?.map((c) => c.text ?? '').join('') ?? '';
+  return (data.content ?? []).filter((c) => c.type === 'text').map((c) => c.text).join('');
 }
 
 async function callOpenAI(env, text) {
@@ -58,7 +58,7 @@ async function callOpenAI(env, text) {
 // First {...} block, tolerating code fences; then keep only known, well-typed fields.
 function extractJSON(s) {
   const m = String(s).match(/\{[\s\S]*\}/);
-  if (!m) throw new Error('no JSON in model reply');
+  if (!m) throw new Error(`no JSON in model reply: ${String(s).slice(0, 120)}`);
   const o = JSON.parse(m[0]);
   const out = {};
   if (typeof o.max_amount === 'number' && Number.isFinite(o.max_amount)) out.max_amount = o.max_amount;
@@ -69,16 +69,16 @@ function extractJSON(s) {
 }
 
 async function handleParse(request, env) {
-  let text;
+  let text, currency;
   try {
-    ({ text } = await request.json());
+    ({ text, currency } = await request.json());
   } catch {
     return json({ error: 'body must be JSON {text}' }, 400);
   }
   if (typeof text !== 'string' || !text.trim()) return json({ error: 'text is required' }, 400);
   if (text.length > 500) return json({ error: 'text must be 500 characters or fewer' }, 400);
 
-  const floor = parseIntent(text);
+  const floor = parseIntent(text, new Date(), currency === 'SGD' ? { currency } : {});
   const provider = llmProvider(env);
   let fallback_reason = provider ? null : 'no LLM key configured';
   let mandate = floor;
