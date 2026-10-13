@@ -20,6 +20,18 @@
   <button type="button" class="ghost reset" id="btn-reset">Reset demo</button>
 </header>
 
+<nav class="howto" id="howto" aria-label="How to use this demo">
+  <span class="howto-title">How to use this demo</span>
+  <ol class="howto-steps">
+    <li data-step="1">① Set spending mandate</li>
+    <li data-step="2">② Let the agent shop (guard off)</li>
+    <li data-step="3">③ Re-run with FinalCheck</li>
+    <li data-step="4">④ Reject, send back</li>
+    <li data-step="5">⑤ Approve &amp; sign</li>
+  </ol>
+  <span class="howto-tip">Try scenarios B and C from the Scenario menu.</span>
+</nav>
+
 <main class="grid">
   <section class="card" id="panel-mandate" aria-labelledby="h-mandate">
     <h2 id="h-mandate">1 · Mandate</h2>
@@ -31,6 +43,7 @@
       <div class="chips" id="chips"></div>
       <p class="sub">Every agent action is checked against these limits.</p>
       <p class="parsed-by" id="parsed-by"></p>
+      <p class="ai-note" id="ai-note"></p>
     </div>
     <fieldset class="modes" id="modes">
       <legend>Demo options</legend>

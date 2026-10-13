@@ -64,6 +64,21 @@ a { color: var(--blue-ink); }
 .pill.fired { color: var(--red-ink); border-color: color-mix(in srgb, var(--red) var(--tint-line), transparent); background: color-mix(in srgb, var(--red) var(--tint), var(--bg)); }
 .pill.signed { color: var(--mint-ink); border-color: color-mix(in srgb, var(--mint) var(--tint-line), transparent); background: color-mix(in srgb, var(--mint) var(--tint), var(--bg)); }
 
+/* how-to strip — current step follows body[data-state] */
+.howto { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s4) var(--s7); margin: calc(-1 * var(--s4)) 0 var(--s7); padding: var(--s4) var(--s7); border: var(--edge-w) solid var(--edge); border-radius: var(--r-pill); background: var(--panel); font-size: var(--fs-sm); }
+.howto-title { font-size: var(--fs-xs); font-weight: 700; letter-spacing: var(--track-wide); text-transform: uppercase; color: var(--eyebrow-ink); }
+.howto-steps { display: flex; flex-wrap: wrap; gap: var(--s2); margin: 0; padding: 0; list-style: none; }
+.howto-steps li { padding: var(--s1) var(--s5); border-radius: var(--r-pill); color: var(--muted); }
+.howto-tip { margin-left: auto; color: var(--dim); font-size: var(--fs-s); }
+body[data-state="IDLE"] .howto-steps li[data-step="1"],
+body[data-state="MANDATE_ARMED"] .howto-steps li[data-step="2"],
+body[data-state="AGENT_SHOPPING"] .howto-steps li[data-step="3"],
+body[data-state="VIOLATIONS"] .howto-steps li[data-step="4"],
+body[data-state="CART_COMPLIANT"] .howto-steps li[data-step="5"],
+body[data-state="HALT_PENDING"] .howto-steps li[data-step="5"] { background: var(--blue); color: var(--on-accent); font-weight: 700; }
+body[data-state="SIGNED"] .howto-steps li, body[data-state="HALTED"] .howto-steps li { color: var(--mint-ink); }
+.ai-note { margin: var(--s2) 0 0; font-size: var(--fs-s); color: var(--muted); }
+
 /* grid + panels */
 .grid { display: grid; grid-template-columns: var(--grid-cols); gap: var(--s7); align-items: start; }
 .card { background: var(--panel); border: var(--edge-w) solid var(--edge); border-radius: var(--r-lg); padding: var(--card-pad); box-shadow: var(--shadow); }

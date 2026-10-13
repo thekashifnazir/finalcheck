@@ -51,6 +51,8 @@ try {
   ok('5 mandate chips', chips.length === 5, chips);
   ok('chip MAX £40', chips[0] === 'MAX £40', chips[0]);
   ok('parsed-by badge', /parsed by: (ruleset|claude|openai)/.test(await page.textContent('#parsed-by')), await page.textContent('#parsed-by'));
+  ok('how-to: step ② is current once armed', (await page.locator('body[data-state="MANDATE_ARMED"] .howto-steps li[data-step="2"]').count()) === 1, await page.getAttribute('body', 'data-state'));
+  ok('ai-note explains who read the words', /read by AI \(Claude\)|read by the built-in rules \(offline\)/.test(await page.textContent('#ai-note')), await page.textContent('#ai-note'));
   ok('pill MANDATE ARMED', (await page.textContent('#status-pill')) === 'MANDATE ARMED', await page.textContent('#status-pill'));
   await shot('1-mandate');
 

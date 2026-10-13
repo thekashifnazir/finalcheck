@@ -131,6 +131,9 @@ function renderMandate(m, note) {
   $('chips').replaceChildren(...toChips(m).map((c) => el('div', 'chip', c)));
   const by = PARSED_BY[m.parsed_by] || m.parsed_by || 'ruleset';
   $('parsed-by').textContent = `parsed by: ${by}` + (note ? ` · ${note}` : '');
+  $('ai-note').textContent = by === 'claude'
+    ? 'Your words are read by AI (Claude) and turned into hard limits; the AI can only tighten them.'
+    : 'Your words are read by the built-in rules (offline) and turned into hard limits.';
   $('mandate-card').classList.add('on');
   $('mandate-card').dataset.state = 'armed';
   if (state === 'IDLE' || state === 'MANDATE_ARMED') {
@@ -303,6 +306,7 @@ function onBaselineToggle(e) {
   if (baseline) {
     $('chips').replaceChildren(el('div', 'chip', 'NO MANDATE'), el('div', 'chip', 'BASELINE RULES ONLY'));
     $('parsed-by').textContent = `policy pack: ${data?.policy?.id ?? region} · baseline rules`;
+    $('ai-note').textContent = '';
     $('mandate-card').classList.add('on');
     $('mandate-card').dataset.state = 'baseline';
     setPill('BASELINE ARMED', 'armed');
