@@ -113,6 +113,16 @@ npm run dev                    # http://localhost:8787  (ops console at /ops/)
 - Single demo user. Prefs, the standing mandate and events are shared by everyone using the
   deployed URL, and KV writes can race under concurrent use.
 - Agent identity is a label ("mcp"/"console"), not a per-agent credential.
+- **An agent can set or decline its own mandate** through the MCP tools (`set_mandate`,
+  `decline_mandate`). The tool descriptions say "only with the user's words", but nothing enforces it
+  yet. The fix is agent-set mandates staying "pending" until the person approves them on the page.
+- `/api/sign` is unauthenticated and trusts the mandate the ops console sends. It's the demo console's
+  route; agents pay through `/mcp`, which uses the stored mandate and honours the pause.
+- A one-off mandate can be spent twice by two truly simultaneous agent calls (KV read-then-write).
+  A Durable Object would serialise it.
+- Recurring charges have no cap of their own when subscriptions are allowed. The parser takes the
+  first amount it sees ("up to 3 gifts, max £100" reads as £3). It errs tighter, never looser.
+- Listings carry no currency, so an S$ mandate isn't flagged against £-priced test listings.
 - The mandate conversation understands caps, renewals, gift/anything, weekdays, "tonight" and
   "in N days". Anything else gets a hint and the question is asked again.
 
