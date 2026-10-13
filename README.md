@@ -34,6 +34,8 @@ Console for humans, tools for agents, one engine:
 - **Agent tools** (`/mcp`): a remote MCP server. An agent like Claude lists products, sets or asks
   for a mandate, checks a cart, and pays only through `sign_receipt`. If there's no mandate, the agent
   is told to ask the person once: set one, or continue with baseline protection.
+  [`app/mcp/TRANSCRIPT.md`](app/mcp/TRANSCRIPT.md) records a real Claude agent going through it:
+  the handshake, a refused cart, a signed and verified purchase, and the pause.
 
 ## Operational problem
 
