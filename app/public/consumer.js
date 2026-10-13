@@ -82,12 +82,32 @@ async function renderProtection() {
   $('c-protection-status').textContent = `Protected · ${state.policy.region} baseline`;
   $('c-pack').textContent = `Policy pack: ${state.policy.label}`;
   const list = $('c-bullets');
-  list.replaceChildren(...state.policy.baseline_summary.map((text) => {
+  list.replaceChildren(...state.policy.baseline_summary.map((text, i) => {
+    const t = TILES[i] ?? { title: '', icon: TILES[0].icon };
     const li = document.createElement('li');
-    li.textContent = text; // the check badge comes from consumer.css
+    const icon = document.createElement('span');
+    icon.className = 'c-tile-icon';
+    icon.setAttribute('aria-hidden', 'true');
+    icon.innerHTML = `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${t.icon}</svg>`; // constant markup
+    const title = document.createElement('strong');
+    title.className = 'c-tile-title';
+    title.textContent = t.title;
+    const sub = document.createElement('span');
+    sub.className = 'c-tile-sub';
+    sub.textContent = text;
+    li.append(icon, title, sub);
     return li;
   }));
 }
+
+// Short titles and icons for the 5 baseline bullets (same order in every policy pack).
+const TILES = [
+  { title: 'Scam cash-outs blocked', icon: '<path d="M12 3 5 6v6c0 4.5 3 7.7 7 9 4-1.3 7-4.5 7-9V6z"/><path d="m9 12 2 2 4-4"/>' },
+  { title: 'No surprise sign-ups', icon: '<path d="M17 2l4 4-4 4"/><path d="M3 11V9a3 3 0 0 1 3-3h15"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a3 3 0 0 1-3 3H3"/>' },
+  { title: 'Hidden instructions ignored', icon: '<path d="M3 3l18 18"/><path d="M10.6 6.1A9.8 9.8 0 0 1 12 6c5 0 9 6 9 6a17 17 0 0 1-3 3.4"/><path d="M6.6 6.6C4.3 8 3 12 3 12s4 6 9 6a9 9 0 0 0 4.4-1.1"/>' },
+  { title: 'Lookalike shops flagged', icon: '<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/>' },
+  { title: 'Payment privacy', icon: '<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>' },
+];
 
 // ---- mandate card ----
 function money(amount, currency) {
@@ -269,6 +289,7 @@ function renderPreview() {
     const q = QUESTIONS[f];
     if (chat.answered.has(f)) {
       li.textContent = q.chip(chips, m).join(' · ') || (f === 'category' ? 'CATEGORY: ANYTHING' : '');
+      if (f === 'max_amount') li.textContent = li.textContent.replace(/^MAX\s*/, '');
     } else {
       li.textContent = q.unset;
       li.className = 'c-default';
@@ -447,14 +468,31 @@ async function refreshActivity() {
     const rows = events.map((ev) => [ev, sentence(ev)]).filter(([, s]) => s);
     $('c-activity').replaceChildren(...rows.map(([ev, s]) => {
       const li = document.createElement('li');
-      li.textContent = s;
       li.dataset.kind = ev.kind;
+      // "✓ Bought …" → icon circle + title; the text still reads as one sentence.
+      const cut = s.indexOf(' ');
+      const icon = document.createElement('span');
+      icon.className = 'c-feed-icon';
+      icon.textContent = s.slice(0, cut);
+      const title = document.createElement('strong');
+      title.className = 'c-feed-title';
+      title.textContent = s.slice(cut);
+      const meta = document.createElement('span');
+      meta.className = 'c-feed-meta';
       if (ev.at) {
         const t = document.createElement('time');
         t.dateTime = ev.at;
-        t.textContent = new Date(ev.at).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' }); // its own line (consumer.css)
-        li.append(t);
+        t.textContent = new Date(ev.at).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' });
+        meta.append(t);
       }
+      const note = ev.kind === 'refusal' ? "You weren't charged"
+        : ev.kind === 'receipt' ? (ev.cap ? `Within your ${ev.cap.replace(/\.00$/, '')} limit · receipt signed` : 'Baseline protection · receipt signed')
+        : ev.kind === 'order' ? 'Order placed with the shop' : '';
+      if (note) meta.append(` · ${note}`);
+      const body = document.createElement('span');
+      body.className = 'c-feed-body';
+      body.append(title, meta);
+      li.append(icon, body);
       return li;
     }));
     status.textContent = rows.length ? '' : "Nothing yet — your agent hasn't tried to buy anything.";

@@ -106,7 +106,7 @@ try {
   check('asks exactly 4 questions, one per missing field', questions.length === 4, questions.map((q) => q.replace('FinalCheck: ', '')).join(' | '));
   await page.waitForSelector('#c-chat-actions:not([hidden])');
   const previewRows = await page.locator('#c-chat-rows li').allTextContents();
-  check('preview filled from answers', (await page.locator('#c-chat-rows li.c-default').count()) === 0 && previewRows[0] === 'MAX £40', previewRows.join(' / '));
+  check('preview filled from answers', (await page.locator('#c-chat-rows li.c-default').count()) === 0 && previewRows[0] === '£40', previewRows.join(' / '));
   check("ends with \"Here's your mandate\"", (await page.locator('#c-chat-log li').last().textContent()).includes("Here's your mandate"));
   await shot('chat-review');
   await page.click('#c-save-mandate');
