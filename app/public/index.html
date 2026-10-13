@@ -29,7 +29,7 @@
 <main>
   <p id="c-boot-error" role="alert"></p>
 
-  <section id="c-protection" aria-labelledby="c-protection-status">
+  <section id="c-hero-section" aria-labelledby="c-protection-status">
     <div class="c-hero">
       <div>
         <p class="c-eyebrow">Your protection</p>
@@ -49,24 +49,6 @@
           <option value="sg">Singapore</option>
         </select></p>
       </div>
-    </div>
-    <ol class="c-steps" aria-label="How it works">
-      <li><span class="c-step-icon" aria-hidden="true">1</span><strong>Tell us what you want</strong><span>In your own words. Our AI (Claude) turns it into a spending rule; FinalCheck asks only for what's missing.</span></li>
-      <li><span class="c-step-icon" aria-hidden="true">2</span><strong>Your agent shops</strong><span>Before anything is paid, FinalCheck checks the cart: your rule plus scam checks, 13 in all.</span></li>
-      <li><span class="c-step-icon" aria-hidden="true">3</span><strong>You stay in control</strong><span>Blocked carts tell you why. Approved ones get a receipt of exactly what you authorised. Pause any time.</span></li>
-    </ol>
-    <div class="c-card">
-      <div class="c-card-head">
-        <h3>What's protecting you right now</h3>
-        <span class="c-badge">All active</span>
-      </div>
-      <ul id="c-bullets"></ul>
-      <p id="c-protection-note">These apply to every purchase, even without a mandate.</p>
-    <p id="c-pause-row" class="c-toggle-row">
-      <input id="c-pause" type="checkbox">
-      <label for="c-pause">Pause my agent — block every purchase until I resume</label>
-    </p>
-    <p id="c-pause-note"></p>
     </div>
   </section>
 
@@ -112,6 +94,28 @@
       <label for="c-ask-toggle">Ask me before each purchase without a mandate</label>
     </p>
   </section>
+
+  <section id="c-protection" aria-label="Your protection">
+    <ol class="c-steps" aria-label="How it works">
+      <li><span class="c-step-icon" aria-hidden="true">1</span><strong>Tell us what you want</strong><span>In your own words. Our AI (Claude) turns it into a spending rule; FinalCheck asks only for what's missing.</span></li>
+      <li><span class="c-step-icon" aria-hidden="true">2</span><strong>Your agent shops</strong><span>Before anything is paid, FinalCheck checks the cart: your rule plus scam checks, 13 in all.</span></li>
+      <li><span class="c-step-icon" aria-hidden="true">3</span><strong>You stay in control</strong><span>Blocked carts tell you why. Approved ones get a receipt of exactly what you authorised. Pause any time.</span></li>
+    </ol>
+    <div class="c-card">
+      <div class="c-card-head">
+        <h3>What's protecting you right now</h3>
+        <span class="c-badge">All active</span>
+      </div>
+      <ul id="c-bullets"></ul>
+      <p id="c-protection-note">These apply to every purchase, even without a mandate.</p>
+    <p id="c-pause-row" class="c-toggle-row">
+      <input id="c-pause" type="checkbox">
+      <label for="c-pause">Pause my agent — block every purchase until I resume</label>
+    </p>
+    <p id="c-pause-note"></p>
+    </div>
+  </section>
+
 
   <section id="c-activity-section" class="c-card" aria-labelledby="c-activity-heading">
     <h2 id="c-activity-heading">What your agent did</h2>
