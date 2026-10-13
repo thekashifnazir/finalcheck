@@ -95,6 +95,10 @@ try {
     asked.push(await page.locator('#c-chat-log li[data-who="finalcheck"]').last().textContent());
     await page.click(`#c-chat-replies button:text-is("${reply}")`);
     if (reply === 'No — one-off only') await shot('chat-midway');
+    if (reply === 'A gift') {
+      const labels = await page.locator('#c-chat-replies button').allTextContents();
+      check('expiry options', ['Friday 23:59', 'End of today', 'In 7 days'].every((l) => labels.includes(l)), labels.join(' | '));
+    }
   }
   const questions = asked.filter((q) => q.trim().endsWith('?'));
   check('asks exactly 4 questions, one per missing field', questions.length === 4, questions.map((q) => q.replace('FinalCheck: ', '')).join(' | '));

@@ -98,7 +98,11 @@ function money(amount, currency) {
 function mandateSummary(m) {
   const scope = m.category === 'gift' ? 'gifts' : 'anything';
   const kind = m.one_off ? 'one-off' : 'repeat payments allowed';
-  const until = expiryLabel(m.expires).replace(/^(\w)(\w+)/, (_, a, b) => a + b.toLowerCase());
+  let until = expiryLabel(m.expires).replace(/^(\w)(\w+)/, (_, a, b) => a + b.toLowerCase());
+  if (Date.parse(m.expires) - Date.now() > 6 * 86_400_000) {
+    const date = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', day: 'numeric', month: 'short' }).format(new Date(m.expires));
+    until = until.replace(' ', ` ${date} `);
+  }
   return `Up to ${money(m.max_amount, m.currency)} · ${scope} · ${kind} · until ${until}`;
 }
 
@@ -180,8 +184,6 @@ async function saveMandateText(text) {
 // through the same parser, so there is still one engine path.
 const FIELDS = ['max_amount', 'recurring', 'category', 'expires'];
 const DAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-const londonToday = () =>
-  new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', weekday: 'long' }).format(new Date()).toLowerCase();
 const sym = () => (state.policy?.currency === 'SGD' ? 'S$' : '£');
 
 const QUESTIONS = {
@@ -214,17 +216,21 @@ const QUESTIONS = {
   },
   expires: {
     ask: 'When should this permission end?',
-    // The parser reads "by <weekday>" (23:59 London), so every option is one of those.
+    // Each option is wording the parser reads (all end 23:59 London).
     replies: () => [
       { label: 'Friday 23:59', words: 'by friday' },
-      { label: 'End of today', words: `by ${londonToday()}` },
-      { label: 'Sunday 23:59', words: 'by sunday' },
+      { label: 'End of today', words: 'end of today' },
+      { label: 'In 7 days', words: 'in 7 days' },
     ],
     free: (t) => {
-      const d = DAYS.find((day) => t.toLowerCase().includes(day));
+      const s = t.toLowerCase();
+      const n = s.match(/\bin\s+(\d{1,2})\s+days?\b/);
+      if (n) return `in ${n[1]} days`;
+      if (/\btonight\b|\bend of (?:the )?day\b|\bend of today\b|\btoday\b/.test(s)) return 'end of today';
+      const d = DAYS.find((day) => s.includes(day));
       return d ? `by ${d}` : null;
     },
-    hint: 'Pick a day, e.g. Saturday.',
+    hint: 'Pick a day (e.g. Saturday), "end of today", or "in 3 days".',
     unset: 'default: Friday 23:59',
     chip: (chips) => chips.filter((c) => c.startsWith('EXPIRES')),
   },
@@ -325,6 +331,7 @@ async function onReply(option) {
   if (option.decline) {
     say('finalcheck', "OK, no spending mandate. Baseline protection stays on, and your agent won't be asked again.");
     showReplies([]);
+    chat.stage = 'review'; // next message starts a fresh request
     await savePrefs({ mandate_choice: 'baseline' });
     renderMandate();
     return;
@@ -375,7 +382,7 @@ async function onRevoke() {
     state.record = null;
     renderMandate();
   } catch (e) {
-    $('c-mandate-error').textContent = `Couldn't revoke: ${e.message}`;
+    $('c-mandate-note').textContent = `Couldn't revoke: ${e.message}`; // the form (and its error line) is hidden here
   }
 }
 
