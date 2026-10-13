@@ -1,6 +1,6 @@
 // record_ui.ts — a scripted walk through the REAL running app, recorded by Playwright.
 // kit-video runs it with `npx tsx demo/record_ui.ts`; KIT_VIDEO_DIR is where the
-// recording must land and KIT_APP_URL (default http://localhost:8000) is the app.
+// recording must land and KIT_APP_URL (default http://localhost:8787/ops/) is the app.
 // Start the app first. Re-run after any UI change — a fumbled take is one re-run.
 //
 // Why the helpers: Playwright's own pointer is invisible on video and jumps between
@@ -13,10 +13,15 @@
 // how much the whole page is enlarged in the final frame: higher = bigger text, less room.
 // Seed realistic data first; show one complete path with real input.
 import { writeFileSync } from "node:fs";
-import { chromium, type Locator, type Page } from "playwright";
+import { createRequire } from "node:module";
+import type { Locator, Page } from "playwright";
+// require(), not import: CommonJS resolution honours NODE_PATH, ESM does not. With no local
+// install, point NODE_PATH at any node_modules that has playwright (kit-video passes env through):
+//   NODE_PATH=/path/to/node_modules kit-video
+const { chromium } = createRequire(import.meta.url)("playwright") as typeof import("playwright");
 
 const outDir = process.env.KIT_VIDEO_DIR ?? "demo/raw/ui";
-const appUrl = process.env.KIT_APP_URL ?? "http://localhost:8000";
+const appUrl = process.env.KIT_APP_URL ?? "http://localhost:8787/ops/";
 // the picture area kit-video fills: a 1920×1080 frame minus a 120px caption band (2:1)
 const ZOOM = Number(process.env.KIT_UI_ZOOM ?? 1.2);
 const SIZE = { width: Math.round(1920 / ZOOM), height: Math.round(960 / ZOOM) };
@@ -223,14 +228,41 @@ async function main() {
   await go(appUrl, 300);
   markStart();
 
-  // 2. the one path that works end to end, with real input — replace for FinalCheck
-  // await type(page.getByLabel("Claim email"), "Hi, my car was hit while parked…");
-  // await click(page.getByRole("button", { name: "Run" }));
-  // await page.getByText("Decision").waitFor();
+  // 2. FinalCheck end to end. at(s) marks are paced to demo/script.md at ~150 wpm:
+  //    what-it-is 0–4 · problem 4–14 · mandate 14–19 · unguarded 19–30 · guard 30–38 · approve 38–44 · close 44–47
+  // "So I set a mandate…" — type during the problem line so the card lands as it's named
+  await at(10.5);
+  await type(page.locator("#intent"), "Gift for my mum — under £40, no subscriptions", 250);
+  await click(page.locator("#btn-mandate"), 500, "arm the mandate");
+  await page.locator("#mandate-card.on").waitFor();
+  await highlight(page.locator("#mandate-card"), 3200, { label: "mandate → hard spending rules" });
 
-  // 3. point at the result and hold it — or pace every step with at(seconds)
-  // await highlight(page.getByTestId("result"));
-  await hold(2500);
+  // "Unguarded, the agent picks a £52 hamper and sneaks in a £4.99 monthly club…"
+  await at(19.0);
+  await click(page.locator("#btn-run"), 600, "agent shops — guard off");
+  await hold(900); // step rows fade in on a 350ms stagger
+  await highlight(page.locator(".cart"), 3000, { label: "£56.99 — over budget + hidden monthly add-on" });
+  // "…the listing hid instructions only the agent could read"
+  await highlight(page.locator(".listing.picked"), 2600, { zoom: false, label: "listing carries agent-only text" });
+
+  // "With FinalCheck on, every action is checked against my mandate…"
+  await at(29.5);
+  await click(page.locator("#btn-guard"), 500, "re-run with FinalCheck");
+  await page.locator("#verdict.on").waitFor();
+  // "…over budget, hidden recurring charge, injected text — quarantined."
+  await highlight(page.locator("#flags"), 3800, { label: "3 violations, each with its rule basis" });
+  await highlight(page.locator("#inj1"), 2000, { zoom: false, label: "injected text quarantined — shown, never obeyed" });
+
+  // 3. "Approve the safe cart, and we sign an intent receipt — proof for any dispute."
+  await at(37.0);
+  await click(page.locator("#btn-fix"), 600, "reject — agent rebuilds the cart");
+  await click(page.locator("#btn-approve"), 400, "approve & sign");
+  await page.locator("#receipt.on").waitFor();
+  await highlight(page.locator("#receipt"), 3800, { label: "signed intent receipt" });
+  await highlight(page.locator("#dispute"), 2400, { zoom: false, label: "dispute-ready evidence pack" });
+
+  // closing line lands on the signed receipt
+  await at(47.0);
 
   // camera cues for the compositor: kit-video feeds these to renderers that can
   // do post-capture zoom/callouts (hyperframes). `flat` marks whether this take
