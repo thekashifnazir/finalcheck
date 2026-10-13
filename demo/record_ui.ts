@@ -1,9 +1,23 @@
-// record_ui.ts — scripted walkthrough of the FinalCheck mock, recorded by Playwright.
+// record_ui.ts — a scripted walk through the REAL running app, recorded by Playwright.
+// kit-video runs it with `npx tsx demo/record_ui.ts`; KIT_VIDEO_DIR is where the
+// recording must land and KIT_APP_URL (default http://localhost:8000) is the app.
+// Start the app first. Re-run after any UI change — a fumbled take is one re-run.
+//
+// Why the helpers: Playwright's own pointer is invisible on video and jumps between
+// targets, so viewers can't follow. These draw a visible cursor that glides, ripple
+// on every click, type at human speed, and pause so each step can be read.
+// The browser renders at its natural desktop layout (1600×800 by default) and kit-video
+// scales it into the frame above a caption band, so captions never cover the UI.
+// highlight() zooms smoothly onto the element it rings, then back out — small text
+// becomes readable without cramping the whole layout. KIT_UI_ZOOM (default 1.2) is
+// how much the whole page is enlarged in the final frame: higher = bigger text, less room.
+// Seed realistic data first; show one complete path with real input.
 import { writeFileSync } from "node:fs";
 import { chromium, type Locator, type Page } from "playwright";
 
 const outDir = process.env.KIT_VIDEO_DIR ?? "demo/raw/ui";
 const appUrl = process.env.KIT_APP_URL ?? "http://localhost:8000";
+// the picture area kit-video fills: a 1920×1080 frame minus a 120px caption band (2:1)
 const ZOOM = Number(process.env.KIT_UI_ZOOM ?? 1.2);
 const SIZE = { width: Math.round(1920 / ZOOM), height: Math.round(960 / ZOOM) };
 
@@ -15,6 +29,10 @@ const cues: any[] = [];
 
 const hold = (ms: number) => page.waitForTimeout(ms);
 
+// Sync to the voiceover: call markStart() once the first screen is ready (kit-video trims
+// everything recorded before it — the blank page load), then at(seconds) waits until that
+// many seconds after the mark. Take the seconds from `kit-video --timings`, which prints
+// when each word of demo/script.md is spoken.
 const t0 = Date.now();
 let mark = t0;
 function markStart() {
@@ -40,6 +58,21 @@ async function cue(kind: string, target: Locator, label?: string, zoom = false, 
     });
 }
 
+/** Glide the visible cursor to the element, hover, click, pause. */
+async function click(target: Locator, after = 700, label?: string) {
+  await target.scrollIntoViewIfNeeded();
+  const box = await target.boundingBox();
+  if (!box) throw new Error(`not visible: ${target}`);
+  await cue("click", target, label);
+  await glide({ x: box.x + box.width / 2, y: box.y + box.height / 2 });
+  await hold(500); // hover before clicking — signals intent to the viewer
+  await page.mouse.down();
+  await page.mouse.up();
+  await hold(after);
+}
+
+/** Eased cursor travel — an easeInOut path over ~0.2-0.65s scaled by distance,
+ * instead of Playwright's evenly-stepped move (reads as a teleport/hard stop). */
 async function glide(to: { x: number; y: number }) {
   const from = pos;
   const dist = Math.hypot(to.x - from.x, to.y - from.y);
@@ -53,25 +86,17 @@ async function glide(to: { x: number; y: number }) {
   pos = to;
 }
 
-async function click(target: Locator, after = 700, label?: string) {
-  await target.scrollIntoViewIfNeeded();
-  const box = await target.boundingBox();
-  if (!box) throw new Error(`not visible: ${target}`);
-  await cue("click", target, label);
-  await glide({ x: box.x + box.width / 2, y: box.y + box.height / 2 });
-  await hold(500);
-  await page.mouse.down();
-  await page.mouse.up();
-  await hold(after);
-}
-
+/** Click into a field and type like a person. */
 async function type(target: Locator, text: string, after = 600) {
   await click(target, 200);
-  await target.fill("");
   await target.pressSequentially(text, { delay: 45 });
   await hold(after);
 }
 
+/** Ring an element and zoom smoothly onto it, hold, zoom back out. zoom: false = ring only.
+ * ms is the whole window including both transitions: zoomed dwell ≈ ms − 1600.
+ * Hold while the narration is ON the element (3-5s total is typical), not just a flash —
+ * and don't zoom out if the next beat lands on the same region. */
 async function highlight(
   target: Locator,
   ms = 2200,
@@ -79,7 +104,7 @@ async function highlight(
 ) {
   const { zoom: wantZoom = true, maxScale = 1.8, label } = opts;
   const zoom = wantZoom && !FLAT;
-  const easeIn = 700, easeOut = 900;
+  const easeIn = 700, easeOut = 900; // in slightly bouncy, out softer
   ms = Math.max(ms, zoom ? easeIn + easeOut + 400 : 300);
   await target.scrollIntoViewIfNeeded();
   await cue("highlight", target, label, wantZoom, ms);
@@ -94,6 +119,7 @@ async function highlight(
     document.body.appendChild(ring);
     setTimeout(() => ring.remove(), o.ms);
     if (!o.zoom) return;
+    // scale so the element fills ~80% of the view, never past maxScale; keep page edges in frame
     const W = innerWidth, H = innerHeight;
     const s = Math.max(1, Math.min(o.maxScale, (0.8 * W) / (r.width + 32), (0.8 * H) / (r.height + 32)));
     if (s < 1.08) return;
@@ -113,16 +139,17 @@ async function highlight(
   await hold(ms);
 }
 
+/** Navigate and put the cursor back where it was. */
 async function go(url: string, after = 1200) {
   await page.goto(url, { waitUntil: "networkidle" });
   await page.mouse.move(pos.x, pos.y);
   await hold(after);
 }
 
+// Injected into every page: a big white arrow cursor + a thin white click ring.
 function installCursor() {
-  // function declaration, not a const-arrow: tsx/esbuild wraps `const f = () => {}`
-  // in a __name() helper call, and this whole function is serialized into the page
-  // by addInitScript — __name doesn't exist there, so install never ran.
+  // plain function declaration (not a const-arrow) — this body is serialized into
+  // the page via addInitScript, so avoid bundler-decorated constructs.
   function install() {
     if (document.getElementById("__kit_cursor")) return;
     const c = document.createElement("div");
@@ -139,8 +166,9 @@ function installCursor() {
     c.style.cssText =
       "position:fixed;left:-50px;top:-50px;width:34px;height:34px;" +
       "z-index:2147483647;pointer-events:none;transition:transform .12s ease;";
-    // documentElement, not body: a transform on body (highlight's zoom) re-anchors
-    // position:fixed descendants — the cursor would scale + drift off the pointer.
+    // documentElement, NOT body: a transform on body (highlight()'s zoom) re-anchors
+    // every position:fixed descendant — the cursor would scale and drift off the
+    // real pointer location. Outside body it stays 1:1 with the viewport.
     document.documentElement.appendChild(c);
     addEventListener("mousemove", (e) => {
       c.style.left = e.clientX - 14 + "px";
@@ -171,6 +199,9 @@ function installCursor() {
 
 async function main() {
   const browser = await chromium.launch();
+  // page.screencast (Playwright ≥1.59; fps ≥1.64) beats context recordVideo: real
+  // fps + JPEG-quality control instead of a fixed ~1Mbit VP8. Probe once — older
+  // Playwright keeps the recordVideo path.
   const probe = await browser.newContext({ viewport: SIZE });
   const canScreencast = typeof ((await probe.newPage()) as any).screencast?.start === "function";
   await probe.close();
@@ -178,61 +209,38 @@ async function main() {
     viewport: SIZE,
     ...(canScreencast ? {} : { recordVideo: { dir: outDir, size: SIZE } }),
   });
-  // tsx/esbuild decorates serialized functions with __name() calls that don't exist
-  // inside the page — inject a no-op shim first so installCursor can run.
+  // tsx/esbuild decorates serialized function bodies with __name() helper calls that
+  // don't exist inside the page — inject a no-op shim first so installCursor runs.
   await context.addInitScript("globalThis.__name=function(f){return f};");
   await context.addInitScript(installCursor);
   page = await context.newPage();
-  page.setDefaultTimeout(8000);
+  page.setDefaultTimeout(8000); // a missing element fails the take fast, not after 30s
   if (canScreencast) {
     await (page as any).screencast.start({ path: `${outDir}/capture.webm`, size: SIZE, fps: 30, quality: 90 });
   }
 
-  // land — first frame reads as "what it is"
+  // 1. land on the app — hold so the first frame reads as "what it is"
   await go(appUrl, 300);
   markStart();
 
-  // "So I set a mandate…" @13.0 — type during the lead-in, card lands as it's named
-  await at(11.0);
-  await type(page.locator("#intent"), "Gift for my mum — under £40, no subscriptions", 250);
-  await click(page.locator("#btn-mandate"));
-  await highlight(page.locator("#mandate-card"), 3400, { label: "mandate → hard spending rules" });
+  // 2. the one path that works end to end, with real input — replace for FinalCheck
+  // await type(page.getByLabel("Claim email"), "Hi, my car was hit while parked…");
+  // await click(page.getByRole("button", { name: "Run" }));
+  // await page.getByText("Decision").waitFor();
 
-  // "Unguarded, the agent picks a £52 hamper…" @18.1 → wrong cart @20
-  await at(19.7);
-  await click(page.locator("#btn-run"), 700, "agent runs unguarded");
-  await hold(1200);
-  await highlight(page.locator(".cart"), 2600, { label: "£56.99 — over budget + hidden add-on" });
+  // 3. point at the result and hold it — or pace every step with at(seconds)
+  // await highlight(page.getByTestId("result"));
+  await hold(2500);
 
-  // "the listing hid instructions only the agent could read" @23.6 — ring the picked listing
-  await highlight(page.locator(".listing.picked"), 2600, { zoom: false, label: "agent-only instructions in the listing" });
-
-  // "With FinalCheck on, every action is checked…" @26.9 → flags land on "over budget…quarantined"
-  await at(27.9);
-  await click(page.locator("#btn-guard"));
-  await hold(600);
-  await at(30.2);
-  await highlight(page.locator("#verdict"), 3600, { label: "3 violations caught" });
-  await at(34.2);
-  await highlight(page.locator("#inj1"), 1600, { zoom: false, label: "injected text quarantined" });
-
-  // "Approve the safe cart, and we sign an intent receipt" @35.1
-  await at(35.9);
-  await click(page.locator("#btn-fix"));
-  await hold(500);
-  await at(38.2);
-  await click(page.locator("#btn-approve"));
-  await highlight(page.locator("#receipt"), 5200, { label: "signed intent receipt — dispute-ready" });
-
-  // closing line lands on the signed receipt @39.8–42.9
-  await at(45.0);
-
+  // camera cues for the compositor: kit-video feeds these to renderers that can
+  // do post-capture zoom/callouts (hyperframes). `flat` marks whether this take
+  // skipped in-page zoom (KIT_FLAT) so the renderer never double-zooms.
   writeFileSync(
     `${outDir}/cues.json`,
     JSON.stringify({ vw: SIZE.width, vh: SIZE.height, flat: FLAT, cues }, null, 1)
   );
-  if (canScreencast) await (page as any).screencast.stop();
-  await context.close();
+  if (canScreencast) await (page as any).screencast.stop(); // flushes capture.webm
+  await context.close(); // flushes the recordVideo file on old Playwright
   await browser.close();
 }
 
