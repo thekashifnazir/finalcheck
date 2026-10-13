@@ -6,12 +6,12 @@ event:
 
 project:
   name: "FinalCheck"
-  tagline: "The last checkpoint before an AI agent spends your money"
+  tagline: "Your AI Agent. Our Fraud Protection."
   hook: "Agent payments shipped this year — but when the agent buys wrong, there is no dispute code for it"
   result: "1 cart checked, 3 violations caught, £0 moved without a signature"
   icon: "shield-check"
-  brand_color: "#0d9488"
-  logo: ""
+  brand_color: "#062B62"
+  logo: "brand/logo.png"
 
 team:
   name: ""
