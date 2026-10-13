@@ -88,3 +88,13 @@ test('recurring items render per-period and count toward total', async () => {
   assert.equal(r.checks.violations, 3);
   assert.equal(r.checks.policy_pack, 'uk-2026-10'); // falls back to policy.id
 });
+
+test('total counts quantity and checkout fees', async () => {
+  const c = {
+    merchant: 'X',
+    items: [{ listing_id: 'a', name: 'Mug', price: 1000, quantity: 2, fees: [{ label: 'Service', amount: 250 }, { label: 'P&P', amount: 199 }] }],
+  };
+  const r = await buildReceipt(mandate, c, verdict, policy, null);
+  assert.equal(r.cart_mandate.total, '£24.49');
+  assert.deepEqual(r.cart_mandate.items, [{ name: 'Mug', price: '£10.00', quantity: 2, fees: '£4.49' }]);
+});

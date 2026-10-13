@@ -5,14 +5,16 @@
 import listings from '../public/fixtures/listings.json' with { type: 'json' };
 import uk from '../public/policies/uk.json' with { type: 'json' };
 import sg from '../public/policies/sg.json' with { type: 'json' };
+import trust from '../public/fixtures/trust.json' with { type: 'json' };
 import { check, formatPence } from '../public/lib/rules.js';
+import { buildCart, lineTotal } from '../public/lib/cart.js';
 import { parseIntent, validateMandate, toChips } from '../public/lib/parse.js';
 import { buildReceipt, ed25519Signer, keyId, publicJwk, verifyReceipt } from '../public/lib/receipt.js';
 import { makeStore } from './store.js';
 
 export const POLICIES = { uk, sg };
 export const LISTINGS = Object.fromEntries(listings.map((l) => [l.id, l]));
-export { listings };
+export { listings, trust };
 const MAX_ITEMS = 20;
 
 const JSON_HEADERS = { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' };
@@ -38,7 +40,12 @@ export function rebuildCart(cart) {
   const items = cart.items.map((it) => {
     const l = LISTINGS[it?.listing_id];
     if (!l) throw new BadRequest(`unknown listing ${JSON.stringify(it?.listing_id)}`);
-    if (!it.recurring) return { listing_id: l.id, name: l.name, price: l.price };
+    if (!it.recurring) {
+      // shared builder: price from fixtures, quantity clamped here, fees from checkout_fees
+      const qty = Number.isInteger(it.quantity) ? Math.min(Math.max(it.quantity, 1), 99) : 1;
+      const notes = typeof it.notes === 'string' ? it.notes.slice(0, 500) : undefined;
+      return buildCart([{ listing_id: l.id, quantity: qty, notes }], LISTINGS).items[0];
+    }
     if (!l.recurring_addon) throw new BadRequest(`${l.name} has no recurring add-on`);
     const a = l.recurring_addon;
     return { listing_id: l.id, name: a.name, price: a.price, recurring: a.interval };
@@ -112,7 +119,10 @@ export const mandateChips = (m) => toChips(m);
 
 // ---- events ----
 const eventItems = (cart) =>
-  cart.items.map((i) => ({ name: i.name, price: formatPence(i.price) + (i.recurring ? `/${i.recurring}` : '') }));
+  cart.items.map((i) => ({
+    name: (i.quantity > 1 ? `${i.quantity} × ` : '') + i.name,
+    price: formatPence(lineTotal(i)) + (i.recurring ? `/${i.recurring}` : ''),
+  }));
 
 export function eventBase(cart, verdict, mandate, agent) {
   const base = {
@@ -134,7 +144,7 @@ export const refusalEvent = (cart, verdict, mandate, agent) =>
 export async function signCart(store, env, { mandate, cart: rawCart, region, agent, extra = null }) {
   const policy = policyFor(region ?? (await store.getPrefs()).region);
   const cart = rebuildCart(rawCart);
-  const verdict = check(mandate, cart, listings, new Date(), policy);
+  const verdict = check(mandate, cart, listings, new Date(), policy, trust);
 
   if (!verdict.ok) {
     await store.addEvents(refusalEvent(cart, verdict, mandate, agent));

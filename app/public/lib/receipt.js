@@ -1,6 +1,8 @@
 // AP2-style cart-mandate receipt. Pure ESM: no DOM, runs in the browser and in
 // Node via globalThis.crypto.subtle. Shared by the UI and (later) the MCP server.
 
+import { cartTotals, feesOf } from './cart.js';
+
 const SHA256_DEMO_ALG = 'sha256-demo (hash of canonical JSON — not a cryptographic key signature)';
 
 // Stable JSON: object keys sorted at every depth, array order kept, undefined dropped.
@@ -52,11 +54,14 @@ function mandateCore(m) {
 // block records the protection mode instead. `extra` adds top-level fields (agent_id,
 // mandate_id) that are covered by the signature.
 export async function buildReceipt(mandate, cart, verdict, policy, listing, signer = null, extra = null) {
+  // price is the unit price; quantity and fees are listed when present and count in total.
   const items = (cart?.items ?? []).map((it) => ({
     name: it.name,
     price: it.recurring ? `${gbp(it.price)}/${it.recurring}` : gbp(it.price),
+    ...(it.quantity > 1 ? { quantity: it.quantity } : {}),
+    ...(it.fees?.length ? { fees: gbp(feesOf(it)) } : {}),
   }));
-  const totalPence = (cart?.items ?? []).reduce((sum, it) => sum + it.price, 0);
+  const totalPence = cartTotals({ items: cart?.items ?? [] }).pending_total;
   const violations = verdict?.violations;
 
   const body = {

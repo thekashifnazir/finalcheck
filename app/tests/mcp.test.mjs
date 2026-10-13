@@ -123,3 +123,16 @@ test('bearer auth only when FC_MCP_TOKEN is set; GET is 405', async () => {
   const get = await handleMcp(new Request('http://local/mcp'), open.env);
   assert.equal(get.status, 405);
 });
+
+test('quantity: 1–10 accepted and priced, anything else is an input error', async () => {
+  const c = client();
+  await c.tool('decline_mandate');
+  const two = await c.tool('check_cart', { items: [{ listing_id: 'lst_tea_set', quantity: 2 }] });
+  assert.equal(two.data.one_off_total, '£69.98');
+  for (const quantity of [0, 11, 1.5, '2']) {
+    const bad = await c.tool('check_cart', { items: [{ listing_id: 'lst_tea_set', quantity }] });
+    assert.equal(bad.isError, true, `quantity ${JSON.stringify(quantity)}`);
+  }
+  const schema = (await c.rpc('tools/list')).result.tools.find((t) => t.name === 'check_cart').inputSchema;
+  assert.deepEqual(schema.properties.items.items.properties.quantity, { type: 'integer', minimum: 1, maximum: 10, description: 'how many (default 1)' });
+});

@@ -3,7 +3,7 @@
 // State lives in KV (standing mandate, prefs, events), so any request can be served alone.
 import { makeStore } from './store.js';
 import {
-  BadRequest, listings, policyFor, signCart, setMandateFromText, mandateChips,
+  BadRequest, listings, trust, policyFor, signCart, setMandateFromText, mandateChips,
   refusalEvent, rebuildCart, verify, publicKeyInfo,
 } from './console.js';
 import { check, formatPence } from '../public/lib/rules.js';
@@ -26,6 +26,7 @@ const ITEMS_SCHEMA = {
     type: 'object',
     properties: {
       listing_id: { type: 'string', description: 'id from list_listings' },
+      quantity: { type: 'integer', minimum: 1, maximum: 10, description: 'how many (default 1)' },
       add_recurring_addon: { type: 'boolean', description: "also add the listing's recurring add-on (a subscription)" },
     },
     required: ['listing_id'],
@@ -76,12 +77,18 @@ const TOOLS = [
   },
 ];
 
+function quantityOf(it) {
+  if (it?.quantity === undefined) return 1;
+  if (!Number.isInteger(it.quantity) || it.quantity < 1 || it.quantity > 10) throw new BadRequest('quantity must be a whole number from 1 to 10');
+  return it.quantity;
+}
+
 // Agent-facing items → cart lines (a listing, plus its add-on line when asked for).
 function toCart(items) {
   if (!Array.isArray(items) || items.length === 0) throw new BadRequest('items must be a non-empty array');
   return {
     items: items.flatMap((it) => [
-      { listing_id: it?.listing_id },
+      { listing_id: it?.listing_id, quantity: quantityOf(it) },
       ...(it?.add_recurring_addon ? [{ listing_id: it.listing_id, recurring: true }] : []),
     ]),
   };
@@ -166,7 +173,7 @@ async function callTool(name, args, env, store) {
       const r = await resolve(store);
       if (r.choice) return r.choice;
       const cart = rebuildCart(toCart(args.items));
-      const verdict = check(r.mandate, cart, listings, new Date(), r.policy);
+      const verdict = check(r.mandate, cart, listings, new Date(), r.policy, trust);
       if (!verdict.ok) await store.addEvents(refusalEvent(cart, verdict, r.mandate, AGENT));
       return { ...verdictView(verdict), protection: r.mandate ? `mandate ${r.rec.id}` : protection(r.policy) };
     }

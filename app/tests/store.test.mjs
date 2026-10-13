@@ -135,3 +135,37 @@ test('POST /api/events/reset clears the feed', async () => {
   assert.equal((await call('POST', '/api/events/reset')).body.ok, true);
   assert.deepEqual((await call('GET', '/api/events')).body.events, []);
 });
+
+// Brief 5 scenarios through the server path (trust fixture, fees, quantity, notes).
+const PAN = '4532 0151 1283 0366';
+
+test('scenario B guard-off → 5 fraud codes, card number never echoed in full', async () => {
+  const { call } = api();
+  const r = await call('POST', '/api/sign', {
+    mandate,
+    cart: { items: [{ listing_id: 'lst_afternoon_tea_deals', notes: `Deliver Friday. Card ${PAN} exp 09/28` }] },
+  });
+  assert.equal(r.status, 200);
+  assert.equal(r.body.ok, false);
+  assert.deepEqual(r.body.verdict.violations.map((v) => v.code).sort(),
+    ['DATA_EXFIL', 'FIRST_TIME_PAYEE', 'MERCHANT_UNVERIFIED', 'OVER_BUDGET', 'PRICE_DRIFT']);
+  const { events } = (await call('GET', '/api/events')).body;
+  for (const blob of [JSON.stringify(r.body), JSON.stringify(events)]) {
+    assert.ok(!blob.includes(PAN) && !blob.includes(PAN.replace(/ /g, '')), 'full card number leaked');
+  }
+});
+
+test('scenario C (3 gift cards) refused; B rebuild signs with the exact total', async () => {
+  const { call } = api();
+  // Scenario C's own mandate: "£300 of Apple gift cards" — 3 × £100 is within the cap.
+  const c = await call('POST', '/api/sign', { mandate: { ...mandate, max_amount: 300 }, cart: { items: [{ listing_id: 'lst_apple_gift_card', quantity: 3 }] } });
+  assert.equal(c.body.ok, false);
+  assert.deepEqual(c.body.verdict.violations.map((v) => v.code).sort(),
+    ['FIRST_TIME_PAYEE', 'PRESSURE_CUE', 'QUANTITY_ANOMALY', 'RESTRICTED_CATEGORY']);
+  const [ev] = (await call('GET', '/api/events')).body.events;
+  assert.match(ev.items[0].name, /^3 × /);
+
+  const b = await call('POST', '/api/sign', { mandate, cart: { items: [{ listing_id: 'lst_afternoon_tea' }] } });
+  assert.equal(b.body.ok, true);
+  assert.equal(b.body.receipt.cart_mandate.total, (await import('../public/lib/rules.js')).formatPence(b.body.verdict.pending_total));
+});
