@@ -342,6 +342,33 @@ body[data-paused="1"] #c-pause-note {
 .c-feed-meta { color: var(--c-ink-muted); font-size: var(--c-text-xs); }
 #c-activity .c-feed-meta time { display: inline; font-size: inherit; }
 
+/* ── how it works + CTA + note ── */
+html { scroll-behavior: smooth; }
+.c-hero-cta { display: flex; flex-wrap: wrap; align-items: center; gap: var(--c-space-4); margin-top: var(--c-space-4); }
+.c-cta {
+  background: var(--c-accent); color: var(--c-ink-inverse); text-decoration: none; font-weight: var(--c-weight-semi);
+  padding: var(--c-space-2) var(--c-space-4); border-radius: var(--c-radius-md);
+}
+.c-cta:hover { background: var(--c-accent-hover); }
+.c-cta-link { color: var(--c-accent); font-weight: var(--c-weight-semi); text-decoration: none; }
+.c-steps { list-style: none; padding: 0; margin: 0 0 var(--c-space-4); display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--c-space-3); }
+.c-steps li {
+  display: flex; flex-direction: column; gap: var(--c-space-1);
+  background: var(--c-surface); border: var(--c-border) solid var(--c-line); border-radius: var(--c-radius-inner);
+  padding: var(--c-space-4);
+}
+.c-step-icon {
+  width: var(--c-chat-avatar-size); height: var(--c-chat-avatar-size); display: grid; place-items: center; margin-bottom: var(--c-space-1);
+  background: var(--c-navy); color: var(--c-ink-inverse); border-radius: var(--c-radius-pill); font-size: var(--c-text-xs); font-weight: var(--c-weight-bold);
+}
+.c-steps strong { color: var(--c-heading); font-size: var(--c-text-sm); }
+.c-steps span:last-child { color: var(--c-ink-muted); font-size: var(--c-text-xs); line-height: 1.45; }
+.c-note {
+  background: var(--c-surface-alt); border: var(--c-border) solid var(--c-accent-tint-strong); border-radius: var(--c-radius-inner);
+  padding: var(--c-space-3) var(--c-space-4); font-size: var(--c-text-sm); color: var(--c-ink);
+}
+.c-note strong { color: var(--c-heading); }
+
 @media (max-width: 760px) {
   #c-mandate-form:has(#c-chat-preview:not([hidden])) { grid-template-columns: minmax(0, 1fr); }
   #c-chat-preview, #c-mandate-active { grid-column: 1; grid-row: auto; max-width: none; }
