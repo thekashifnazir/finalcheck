@@ -102,3 +102,15 @@ export function toChips(m) {
   if (!m.allow_recurring) chips.push('NO RECURRING');
   return chips;
 }
+
+// What the person didn't say. Drives the follow-up questions: anything missing falls back to
+// the safe default (baseline rules, one-off, Friday expiry) until they answer.
+export function missingFields(text) {
+  const raw = String(text ?? '');
+  const missing = [];
+  if (!(AMOUNT_RE.test(raw) || BARE_AMOUNT_RE.test(raw))) missing.push('max_amount');
+  if (!(ONE_OFF_RE.test(raw) || RECURRING_OK_RE.test(raw))) missing.push('recurring');
+  if (!GIFT_RE.test(raw)) missing.push('category');
+  if (!BY_DAY_RE.test(raw)) missing.push('expires');
+  return missing;
+}

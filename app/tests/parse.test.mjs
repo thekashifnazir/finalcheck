@@ -65,3 +65,10 @@ test('S$ amounts → SGD mandate', () => {
   assert.equal(parseIntent('a gift up to $25', NOW, { currency: 'SGD' }).currency, 'SGD');
   assert.equal(parseIntent('a gift up to $25', NOW).max_amount, 25);
 });
+
+test('missingFields lists what the person did not say', async () => {
+  const { missingFields } = await import('../public/lib/parse.js');
+  assert.deepEqual(missingFields('buy mum something nice'), ['max_amount', 'recurring', 'category', 'expires']);
+  assert.deepEqual(missingFields(DEMO), ['expires']);
+  assert.deepEqual(missingFields('gift under £40, subscriptions ok, by Wednesday'), []);
+});
