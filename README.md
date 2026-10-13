@@ -63,6 +63,8 @@ agent cart ──► rules.check(mandate | null, cart, listings, now, policyPack
 
 ## How to run
 
+Requires Node 22+ (Wrangler 4, WebCrypto Ed25519) and python3 for `npm run static`.
+
 ```bash
 git clone https://github.com/thekashifnazir/finalcheck && cd finalcheck/app
 npm install
@@ -70,8 +72,13 @@ npm test                       # unit tests (node:test)
 cp .dev.vars.example .dev.vars # optional: add APP_ANTHROPIC_API_KEY for the LLM parse
 npm run dev                    # http://localhost:8787  (ops console at /ops/)
 ```
-No key? Everything still works: the parser falls back to the keyword ruleset.
-Fully offline: `npm run static` serves the pages without the Worker (client-side parse, no feed).
+- Consumer view: http://localhost:8787/ · ops console: http://localhost:8787/ops/
+- Agents connect with `claude mcp add --transport http finalcheck http://localhost:8787/mcp`
+- Optional signed receipts: `node scripts/gen-keys.mjs >> .dev.vars`, then restart `npm run dev`.
+- No key? Everything still works: the parser falls back to the keyword ruleset.
+- Fully offline: `npm run static` serves the pages on http://localhost:8000 (/ and /ops/) without the
+  Worker (client-side parse, no feed or server receipts). Port taken? `python3 -m http.server 8001 -d public`.
+- Live: https://finalcheck.kash-553.workers.dev
 
 ## Models, APIs and external services
 
