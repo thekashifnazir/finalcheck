@@ -7,7 +7,7 @@
 </p>
 <p align="center">
   <a href="https://finalcheck.kashifnazir.com/ops/"><img src="https://img.shields.io/badge/Live%20demo-ops%20console-062B62?style=for-the-badge" alt="Live demo: ops console"></a>
-  <a href="demo/demo.mp4"><img src="https://img.shields.io/badge/Demo%20video-1%3A17-2FC69B?style=for-the-badge" alt="Demo video 1:17"></a>
+  <a href="https://youtu.be/L9j0iRK6qxU"><img src="https://img.shields.io/badge/Demo%20video-52%20s-2FC69B?style=for-the-badge" alt="Demo video 52 s"></a>
 </p>
 
 <h2 align="center"><a href="https://finalcheck.kashifnazir.com">👉 finalcheck.kashifnazir.com</a></h2>
@@ -17,10 +17,10 @@
 > Everything on screen runs on demo data: a scripted agent, fictional shops and a mocked payment
 > rail. No real money moves, and the app says so on every page.
 
-### ▶ FinalCheck in 30 seconds
+### ▶ FinalCheck in 52 seconds
 
-<p align="center"><a href="https://finalcheck.kashifnazir.com/media/explainer-fotor.mp4"><img src="docs/img/explainer-fotor.gif" alt="30-second explainer: an AI agent shops, FinalCheck checks the cart, an approved cart gets a receipt" width="720"></a><br>
-<sub>Explainer video made with <b>Fotor</b> AI · <a href="https://finalcheck.kashifnazir.com/media/explainer-fotor.mp4">watch with sound (MP4)</a> · <a href="app/public/media/explainer-fotor.mp4">file in repo</a> · also on the <a href="https://finalcheck.kashifnazir.com">live site</a></sub></p>
+<p align="center"><a href="https://youtu.be/L9j0iRK6qxU"><img src="docs/media/demo-preview.gif" alt="A product page hides a line only the agent reads; FinalCheck shows it and blocks the cart before payment" width="720"></a><br>
+<sub>▶ Silent preview. <a href="https://youtu.be/L9j0iRK6qxU"><b>Watch the 52 s demo with sound</b></a> · the 30-second <a href="https://finalcheck.kashifnazir.com/media/explainer-fotor.mp4">Fotor explainer</a> is on the <a href="https://finalcheck.kashifnazir.com">live site</a></sub></p>
 
 ### ▶ The product, live
 
@@ -150,7 +150,7 @@ npm run dev                    # http://localhost:8787  (ops console at /ops/)
 - **Anthropic Messages API**: Claude (`claude-haiku-5-5` by default, `APP_LLM_MODEL` overrides) for
   one intent-parse call per mandate. Optional. OpenAI `gpt-4.1-mini` is used only if no Anthropic key is set.
 - **Cloudflare Workers + Workers KV**: hosting, API and demo state.
-- **Fotor** (AI design tool): made the 30-second explainer video shown on the site and above.
+- **Fotor** (AI design tool): made the 30-second explainer video shown on the site.
 - Web Crypto (built in): SHA-256 and Ed25519 for receipt signing; `GET /api/keys` publishes the
   public key and `POST /api/verify` checks a receipt. No payment APIs are called.
 - Model Context Protocol (Streamable HTTP, hand-rolled JSON-RPC) for the agent tools.
